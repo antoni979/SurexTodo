@@ -18,10 +18,12 @@ export default function Sidebar({
   username,
   view,
   onSelect,
+  open,
 }: {
   username: string;
   view: View;
   onSelect: (v: View) => void;
+  open: boolean;
 }) {
   const teams = useQuery(api.teams.listMyTeams) ?? [];
   const { signOut } = useAuthActions();
@@ -32,7 +34,7 @@ export default function Sidebar({
   }
 
   return (
-    <aside className="sidebar">
+    <aside className={"sidebar" + (open ? " open" : "")}>
       <div className="sidebar-brand">
         <img src="/icon.svg" alt="" width={28} height={28} />
         <span>SurexTodo</span>

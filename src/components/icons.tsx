@@ -51,6 +51,8 @@ export const UsersIcon = svg(
 
 export const PlusIcon = svg(<path d="M12 5v14M5 12h14" />);
 
+export const MenuIcon = svg(<path d="M3 6h18M3 12h18M3 18h18" />);
+
 export const CloseIcon = svg(<path d="M18 6 6 18M6 6l12 12" />);
 
 export const TrashIcon = svg(
