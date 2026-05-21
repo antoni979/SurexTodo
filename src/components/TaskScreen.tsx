@@ -20,6 +20,7 @@ export default function TaskScreen({
   showTeamChip,
   loading,
   emptyText,
+  onOpenProject,
 }: {
   title: string;
   accent: string;
@@ -32,6 +33,7 @@ export default function TaskScreen({
   showTeamChip: boolean;
   loading: boolean;
   emptyText: string;
+  onOpenProject?: (projectId: Id<"tasks">) => void;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -95,6 +97,7 @@ export default function TaskScreen({
           today={today}
           members={members}
           onClose={() => setSelectedId(null)}
+          onOpenProject={onOpenProject}
         />
       )}
     </>

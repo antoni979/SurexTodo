@@ -6,13 +6,17 @@ import MyDayView from "./views/MyDayView";
 import PlannedView from "./views/PlannedView";
 import TasksView from "./views/TasksView";
 import TeamView from "./views/TeamView";
+import ProjectsView from "./views/ProjectsView";
+import ProjectView from "./views/ProjectView";
 import { MenuIcon } from "./icons";
 
 export type View =
   | { kind: "myday" }
   | { kind: "planned" }
   | { kind: "tasks" }
-  | { kind: "team"; teamId: Id<"teams"> };
+  | { kind: "team"; teamId: Id<"teams"> }
+  | { kind: "projects" }
+  | { kind: "project"; projectId: Id<"tasks"> };
 
 export default function MainApp({
   username,
@@ -29,6 +33,9 @@ export default function MainApp({
     setView(v);
     setSidebarOpen(false);
   }
+
+  const openProject = (projectId: Id<"tasks">) =>
+    selectView({ kind: "project", projectId });
 
   return (
     <div className="app">
@@ -52,16 +59,27 @@ export default function MainApp({
         <MenuIcon size={22} />
       </button>
       <main className="content">
-        {view.kind === "myday" && <MyDayView today={today} />}
-        {view.kind === "planned" && <PlannedView today={today} />}
-        {view.kind === "tasks" && <TasksView today={today} />}
+        {view.kind === "myday" && (
+          <MyDayView today={today} onOpenProject={openProject} />
+        )}
+        {view.kind === "planned" && (
+          <PlannedView today={today} onOpenProject={openProject} />
+        )}
+        {view.kind === "tasks" && (
+          <TasksView today={today} onOpenProject={openProject} />
+        )}
         {view.kind === "team" && (
           <TeamView
             key={view.teamId}
             teamId={view.teamId}
             today={today}
             myUserId={userId}
+            onOpenProject={openProject}
           />
+        )}
+        {view.kind === "projects" && <ProjectsView onOpen={openProject} />}
+        {view.kind === "project" && (
+          <ProjectView key={view.projectId} projectId={view.projectId} today={today} />
         )}
       </main>
     </div>

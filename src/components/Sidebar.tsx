@@ -11,7 +11,9 @@ import {
   UsersIcon,
   PlusIcon,
   LogoutIcon,
+  FolderIcon,
 } from "./icons";
+import { PROJECT_STATUS_META } from "../util";
 import NewTeamModal from "./NewTeamModal";
 
 export default function Sidebar({
@@ -26,6 +28,7 @@ export default function Sidebar({
   open: boolean;
 }) {
   const teams = useQuery(api.teams.listMyTeams) ?? [];
+  const projects = useQuery(api.projects.listMyProjects) ?? [];
   const { signOut } = useAuthActions();
   const [showNewTeam, setShowNewTeam] = useState(false);
 
@@ -63,6 +66,49 @@ export default function Sidebar({
           <span>Tareas</span>
         </button>
       </nav>
+
+      <div className="sidebar-section">
+        <div className="sidebar-section-title">
+          <FolderIcon size={14} />
+          <span>Proyectos</span>
+        </div>
+        <button
+          className={navClass(view.kind === "projects")}
+          onClick={() => onSelect({ kind: "projects" })}
+        >
+          <ListIcon size={18} />
+          <span>Todos los proyectos</span>
+        </button>
+        <div className="team-list">
+          {projects.slice(0, 8).map((p) => {
+            const meta = PROJECT_STATUS_META[p.projectStatus];
+            return (
+              <button
+                key={p._id}
+                className={navClass(
+                  view.kind === "project" && view.projectId === p._id,
+                )}
+                onClick={() =>
+                  onSelect({
+                    kind: "project",
+                    projectId: p._id as Id<"tasks">,
+                  })
+                }
+                title={p.title}
+              >
+                <span
+                  className="project-dot"
+                  style={{ background: meta.color }}
+                />
+                <span className="nav-label">{p.title}</span>
+              </button>
+            );
+          })}
+          {projects.length === 0 && (
+            <p className="sidebar-empty">Aún no tienes proyectos</p>
+          )}
+        </div>
+      </div>
 
       <div className="sidebar-section">
         <div className="sidebar-section-title">

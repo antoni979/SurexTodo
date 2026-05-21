@@ -21,6 +21,20 @@ export const recurrenceValidator = v.object({
   days: v.optional(v.array(v.number())),
 });
 
+export const projectStatusValidator = v.union(
+  v.literal("not_started"),
+  v.literal("in_progress"),
+  v.literal("paused"),
+  v.literal("completed"),
+  v.literal("cancelled"),
+);
+
+export const kanbanStatusValidator = v.union(
+  v.literal("todo"),
+  v.literal("in_progress"),
+  v.literal("done"),
+);
+
 export default defineSchema({
   ...authTables,
 
@@ -54,10 +68,41 @@ export default defineSchema({
     teamId: v.optional(v.id("teams")),
     assigneeId: v.optional(v.id("users")),
     recurrence: v.optional(recurrenceValidator),
+
+    // --- Subtasks: parentTaskId points to the owning task or project.
+    parentTaskId: v.optional(v.id("tasks")),
+
+    // --- Project flag and project-only fields.
+    isProject: v.optional(v.boolean()),
+    description: v.optional(v.string()),
+    startDate: v.optional(v.string()),
+    endDate: v.optional(v.string()),
+    projectStatus: v.optional(projectStatusValidator),
+    leadId: v.optional(v.id("users")),
+    tags: v.optional(v.array(v.string())),
+
+    // --- Kanban (only meaningful when this task is a child of a project).
+    kanbanStatus: v.optional(kanbanStatusValidator),
+    kanbanOrder: v.optional(v.number()),
   })
     .index("by_creator", ["creatorId"])
     .index("by_team", ["teamId"])
-    .index("by_assignee", ["assigneeId"]),
+    .index("by_assignee", ["assigneeId"])
+    .index("by_parent", ["parentTaskId"]),
+
+  milestones: defineTable({
+    projectId: v.id("tasks"),
+    name: v.string(),
+    date: v.optional(v.string()),
+    completed: v.boolean(),
+    order: v.number(),
+  }).index("by_project", ["projectId"]),
+
+  projectLinks: defineTable({
+    projectId: v.id("tasks"),
+    label: v.string(),
+    url: v.string(),
+  }).index("by_project", ["projectId"]),
 
   myDay: defineTable({
     userId: v.id("users"),

@@ -5,6 +5,16 @@ export type EnrichedTask = FunctionReturnType<
   typeof api.tasks.listPersonal
 >[number];
 
+export type ProjectSummary = FunctionReturnType<
+  typeof api.projects.listMyProjects
+>[number];
+
+export type ProjectDetail = NonNullable<
+  FunctionReturnType<typeof api.projects.getProject>
+>;
+
+export type ProjectTask = ProjectDetail["tasks"][number];
+
 export type Priority = "baja" | "media" | "alta" | "urgente";
 
 export const PRIORITIES: Priority[] = ["baja", "media", "alta", "urgente"];
@@ -111,6 +121,13 @@ export function formatDue(due: string, today: string) {
   return { label, diff, overdue: diff < 0 };
 }
 
+export function shortDate(d: string): string {
+  return dateFromStr(d).toLocaleDateString("es-ES", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
 export function longToday(today: string): string {
   const s = dateFromStr(today).toLocaleDateString("es-ES", {
     weekday: "long",
@@ -131,3 +148,39 @@ export function sortTasks(tasks: EnrichedTask[]): EnrichedTask[] {
     return b._creationTime - a._creationTime;
   });
 }
+
+/* ---------- project meta ---------- */
+
+export type ProjectStatus =
+  | "not_started"
+  | "in_progress"
+  | "paused"
+  | "completed"
+  | "cancelled";
+
+export const PROJECT_STATUSES: ProjectStatus[] = [
+  "not_started",
+  "in_progress",
+  "paused",
+  "completed",
+  "cancelled",
+];
+
+export const PROJECT_STATUS_META: Record<
+  ProjectStatus,
+  { label: string; color: string }
+> = {
+  not_started: { label: "Sin iniciar", color: "#6b7280" },
+  in_progress: { label: "En curso", color: "#2563eb" },
+  paused: { label: "En pausa", color: "#b45309" },
+  completed: { label: "Completado", color: "#16a34a" },
+  cancelled: { label: "Cancelado", color: "#dc2626" },
+};
+
+export type KanbanStatus = "todo" | "in_progress" | "done";
+
+export const KANBAN_COLUMNS: { key: KanbanStatus; label: string }[] = [
+  { key: "todo", label: "Por hacer" },
+  { key: "in_progress", label: "En curso" },
+  { key: "done", label: "Hecho" },
+];

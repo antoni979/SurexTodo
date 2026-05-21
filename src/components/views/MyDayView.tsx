@@ -1,10 +1,17 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { sortTasks, longToday } from "../../util";
 import Composer from "../Composer";
 import TaskScreen, { type TaskGroup } from "../TaskScreen";
 
-export default function MyDayView({ today }: { today: string }) {
+export default function MyDayView({
+  today,
+  onOpenProject,
+}: {
+  today: string;
+  onOpenProject?: (projectId: Id<"tasks">) => void;
+}) {
   const tasks = useQuery(api.tasks.listMyDay, { today });
   const createTask = useMutation(api.tasks.createTask);
 
@@ -24,6 +31,7 @@ export default function MyDayView({ today }: { today: string }) {
       accent="#2564cf"
       groups={groups}
       today={today}
+      onOpenProject={onOpenProject}
       showTeamChip={true}
       loading={tasks === undefined}
       emptyText="Aquí aparecerán las tareas que planees para hoy. Añade una abajo o pulsa el sol en cualquier tarea."

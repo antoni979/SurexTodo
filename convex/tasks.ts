@@ -3,7 +3,11 @@ import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { QueryCtx, MutationCtx } from "./_generated/server";
 import { Doc, Id } from "./_generated/dataModel";
-import { priorityValidator, recurrenceValidator } from "./schema";
+import {
+  priorityValidator,
+  recurrenceValidator,
+  kanbanStatusValidator,
+} from "./schema";
 
 type Recurrence = {
   type: "daily" | "weekdays" | "weekly" | "monthly" | "custom";
@@ -99,7 +103,7 @@ async function isTeamMember(
 
 // A user may view/edit a task if it is their personal task,
 // or if it belongs to a team they are a member of.
-async function assertAccess(
+export async function assertAccess(
   ctx: QueryCtx | MutationCtx,
   task: Doc<"tasks">,
   userId: Id<"users">,
@@ -138,13 +142,42 @@ async function enrich(
     const team = await ctx.db.get(task.teamId);
     teamName = team?.name ?? null;
   }
+  // Subtasks summary for normal tasks (and project root cards).
+  const childRows = await ctx.db
+    .query("tasks")
+    .withIndex("by_parent", (q) => q.eq("parentTaskId", task._id))
+    .collect();
+  const subtaskTotal = childRows.length;
+  const subtaskDone = childRows.filter((c) => c.completed).length;
+
+  let projectName: string | null = null;
+  if (task.parentTaskId) {
+    const parent = await ctx.db.get(task.parentTaskId);
+    if (parent?.isProject) projectName = parent.title;
+  }
+
   return {
     ...task,
     creatorName: await nameOf(ctx, task.creatorId),
     assigneeName: await nameOf(ctx, task.assigneeId),
     teamName,
     inMyDay: myDaySet.has(task._id),
+    subtaskTotal,
+    subtaskDone,
+    projectName,
   };
+}
+
+// Top-level filter: hide subtasks (anything with a non-project parent)
+// from the main lists. Project root tasks (isProject=true) are also
+// hidden — they live in the Proyectos section.
+async function isTopLevel(ctx: QueryCtx, task: Doc<"tasks">) {
+  if (task.isProject) return false;
+  if (!task.parentTaskId) return true;
+  const parent = await ctx.db.get(task.parentTaskId);
+  // If parent is a project, this task is a "project task" and we still
+  // want it to show in the main lists (it's a real working task).
+  return !!parent?.isProject;
 }
 
 /* ---------- queries ---------- */
@@ -159,7 +192,11 @@ export const listPersonal = query({
       .query("tasks")
       .withIndex("by_creator", (q) => q.eq("creatorId", userId))
       .collect();
-    const personal = all.filter((t) => !t.teamId);
+    const personal = [];
+    for (const t of all) {
+      if (t.teamId) continue;
+      if (await isTopLevel(ctx, t)) personal.push(t);
+    }
     const myDaySet = await myDayTaskIds(ctx, userId, today);
     return Promise.all(personal.map((t) => enrich(ctx, t, myDaySet)));
   },
@@ -176,8 +213,12 @@ export const listTeamTasks = query({
       .query("tasks")
       .withIndex("by_team", (q) => q.eq("teamId", teamId))
       .collect();
+    const filtered = [];
+    for (const t of tasks) {
+      if (await isTopLevel(ctx, t)) filtered.push(t);
+    }
     const myDaySet = await myDayTaskIds(ctx, userId, today);
-    return Promise.all(tasks.map((t) => enrich(ctx, t, myDaySet)));
+    return Promise.all(filtered.map((t) => enrich(ctx, t, myDaySet)));
   },
 });
 
@@ -197,7 +238,14 @@ export const listMyDay = query({
     const tasks = [];
     for (const row of rows) {
       const task = await ctx.db.get(row.taskId);
-      if (task) tasks.push(await enrich(ctx, task, myDaySet));
+      if (!task) continue;
+      if (task.isProject) continue;
+      // Subtasks (parent is a normal task) hidden, but project tasks ok.
+      if (task.parentTaskId) {
+        const parent = await ctx.db.get(task.parentTaskId);
+        if (parent && !parent.isProject) continue;
+      }
+      tasks.push(await enrich(ctx, task, myDaySet));
     }
     return tasks;
   },
@@ -216,17 +264,52 @@ export const listPlanned = query({
       .query("tasks")
       .withIndex("by_creator", (q) => q.eq("creatorId", userId))
       .collect();
-    const personalWithDue = created.filter((t) => !t.teamId && t.dueDate);
+
+    const personalWithDue = [];
+    for (const t of created) {
+      if (t.teamId) continue;
+      if (!t.dueDate) continue;
+      if (await isTopLevel(ctx, t)) personalWithDue.push(t);
+    }
 
     const assigned = await ctx.db
       .query("tasks")
       .withIndex("by_assignee", (q) => q.eq("assigneeId", userId))
       .collect();
-    const teamWithDue = assigned.filter((t) => t.teamId && t.dueDate);
+    const teamWithDue = [];
+    for (const t of assigned) {
+      if (!t.teamId) continue;
+      if (!t.dueDate) continue;
+      if (await isTopLevel(ctx, t)) teamWithDue.push(t);
+    }
 
     const combined = [...personalWithDue, ...teamWithDue];
     const myDaySet = await myDayTaskIds(ctx, userId, today);
     return Promise.all(combined.map((t) => enrich(ctx, t, myDaySet)));
+  },
+});
+
+// Subtasks for a given parent (returned in creation order).
+export const listSubtasks = query({
+  args: { parentId: v.id("tasks") },
+  handler: async (ctx, { parentId }) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return [];
+    const parent = await ctx.db.get(parentId);
+    if (!parent) return [];
+    await assertAccess(ctx, parent, userId);
+    const subs = await ctx.db
+      .query("tasks")
+      .withIndex("by_parent", (q) => q.eq("parentTaskId", parentId))
+      .collect();
+    subs.sort((a, b) => a._creationTime - b._creationTime);
+    return subs.map((s) => ({
+      _id: s._id,
+      _creationTime: s._creationTime,
+      title: s.title,
+      completed: s.completed,
+      dueDate: s.dueDate ?? null,
+    }));
   },
 });
 
@@ -242,14 +325,23 @@ export const createTask = mutation({
     recurrence: v.optional(recurrenceValidator),
     addToMyDay: v.optional(v.boolean()),
     today: v.optional(v.string()),
+    parentTaskId: v.optional(v.id("tasks")),
   },
   handler: async (ctx, args) => {
     const userId = await requireUser(ctx);
     const title = args.title.trim();
     if (!title) throw new Error("La tarea necesita un título");
 
-    const teamId = args.teamId;
-    const assigneeId = args.assigneeId;
+    let teamId = args.teamId;
+    let assigneeId = args.assigneeId;
+
+    // If creating as a child, inherit the parent's team and validate access.
+    if (args.parentTaskId) {
+      const parent = await ctx.db.get(args.parentTaskId);
+      if (!parent) throw new Error("Tarea padre no encontrada");
+      await assertAccess(ctx, parent, userId);
+      teamId = parent.teamId;
+    }
 
     if (teamId) {
       if (!(await isTeamMember(ctx, teamId, userId))) {
@@ -258,6 +350,8 @@ export const createTask = mutation({
       if (assigneeId && !(await isTeamMember(ctx, teamId, assigneeId))) {
         throw new Error("La persona asignada no está en el equipo");
       }
+    } else {
+      assigneeId = undefined;
     }
 
     const taskId = await ctx.db.insert("tasks", {
@@ -269,12 +363,40 @@ export const createTask = mutation({
       teamId,
       assigneeId: teamId ? assigneeId : undefined,
       recurrence: args.recurrence,
+      parentTaskId: args.parentTaskId,
+      kanbanStatus: args.parentTaskId ? "todo" : undefined,
     });
 
     if (args.addToMyDay && args.today) {
       await ctx.db.insert("myDay", { userId, taskId, date: args.today });
     }
     return taskId;
+  },
+});
+
+// Quick subtask: only title + optional date.
+export const createSubtask = mutation({
+  args: {
+    parentId: v.id("tasks"),
+    title: v.string(),
+    dueDate: v.optional(v.string()),
+  },
+  handler: async (ctx, { parentId, title, dueDate }) => {
+    const userId = await requireUser(ctx);
+    const parent = await ctx.db.get(parentId);
+    if (!parent) throw new Error("Tarea padre no encontrada");
+    await assertAccess(ctx, parent, userId);
+    const clean = title.trim();
+    if (!clean) throw new Error("La subtarea necesita un título");
+    return await ctx.db.insert("tasks", {
+      title: clean,
+      priority: "media",
+      completed: false,
+      dueDate: dueDate || undefined,
+      creatorId: userId,
+      teamId: parent.teamId,
+      parentTaskId: parentId,
+    });
   },
 });
 
@@ -357,7 +479,14 @@ export const toggleComplete = mutation({
       });
       await ctx.db.patch(taskId, { completed: true, recurrence: undefined });
     } else {
-      await ctx.db.patch(taskId, { completed: completing });
+      const patch: { completed: boolean; kanbanStatus?: "todo" | "done" } = {
+        completed: completing,
+      };
+      // Auto-move on the kanban when this is a project child.
+      if (task.parentTaskId) {
+        patch.kanbanStatus = completing ? "done" : "todo";
+      }
+      await ctx.db.patch(taskId, patch);
     }
   },
 });
@@ -370,15 +499,38 @@ export const deleteTask = mutation({
     if (!task) throw new Error("Tarea no encontrada");
     await assertAccess(ctx, task, userId);
 
-    const dayRows = await ctx.db
-      .query("myDay")
-      .withIndex("by_task", (q) => q.eq("taskId", taskId))
-      .collect();
-    for (const row of dayRows) await ctx.db.delete(row._id);
-
-    await ctx.db.delete(taskId);
+    await cascadeDelete(ctx, taskId);
   },
 });
+
+async function cascadeDelete(ctx: MutationCtx, taskId: Id<"tasks">) {
+  // Children (subtasks or project tasks)
+  const children = await ctx.db
+    .query("tasks")
+    .withIndex("by_parent", (q) => q.eq("parentTaskId", taskId))
+    .collect();
+  for (const c of children) await cascadeDelete(ctx, c._id);
+
+  // Milestones + links if this was a project
+  const ms = await ctx.db
+    .query("milestones")
+    .withIndex("by_project", (q) => q.eq("projectId", taskId))
+    .collect();
+  for (const m of ms) await ctx.db.delete(m._id);
+  const links = await ctx.db
+    .query("projectLinks")
+    .withIndex("by_project", (q) => q.eq("projectId", taskId))
+    .collect();
+  for (const l of links) await ctx.db.delete(l._id);
+
+  const dayRows = await ctx.db
+    .query("myDay")
+    .withIndex("by_task", (q) => q.eq("taskId", taskId))
+    .collect();
+  for (const row of dayRows) await ctx.db.delete(row._id);
+
+  await ctx.db.delete(taskId);
+}
 
 // Add/remove a task from MY "Mi día" for the given date.
 export const setMyDay = mutation({
@@ -406,5 +558,30 @@ export const setMyDay = mutation({
     } else if (!inMyDay && existing) {
       await ctx.db.delete(existing._id);
     }
+  },
+});
+
+/* ---------- kanban ---------- */
+
+export const moveTaskInKanban = mutation({
+  args: {
+    taskId: v.id("tasks"),
+    status: kanbanStatusValidator,
+  },
+  handler: async (ctx, { taskId, status }) => {
+    const userId = await requireUser(ctx);
+    const task = await ctx.db.get(taskId);
+    if (!task) throw new Error("Tarea no encontrada");
+    await assertAccess(ctx, task, userId);
+    if (!task.parentTaskId) {
+      throw new Error("Solo las tareas dentro de un proyecto van al tablero");
+    }
+    const patch: {
+      kanbanStatus: "todo" | "in_progress" | "done";
+      completed?: boolean;
+    } = { kanbanStatus: status };
+    if (status === "done" && !task.completed) patch.completed = true;
+    if (status !== "done" && task.completed) patch.completed = false;
+    await ctx.db.patch(taskId, patch);
   },
 });

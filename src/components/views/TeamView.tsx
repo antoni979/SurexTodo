@@ -67,10 +67,12 @@ export default function TeamView({
   teamId,
   today,
   myUserId,
+  onOpenProject,
 }: {
   teamId: Id<"teams">;
   today: string;
   myUserId: Id<"users">;
+  onOpenProject?: (projectId: Id<"tasks">) => void;
 }) {
   const team = useQuery(api.teams.getTeam, { teamId });
   const tasks = useQuery(api.tasks.listTeamTasks, { teamId, today });
@@ -116,6 +118,7 @@ export default function TeamView({
       accent="#2d7d52"
       groups={groups}
       today={today}
+      onOpenProject={onOpenProject}
       members={team.members}
       showTeamChip={false}
       loading={tasks === undefined}

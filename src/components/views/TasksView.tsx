@@ -1,10 +1,17 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { sortTasks } from "../../util";
 import Composer from "../Composer";
 import TaskScreen, { type TaskGroup } from "../TaskScreen";
 
-export default function TasksView({ today }: { today: string }) {
+export default function TasksView({
+  today,
+  onOpenProject,
+}: {
+  today: string;
+  onOpenProject?: (projectId: Id<"tasks">) => void;
+}) {
   const tasks = useQuery(api.tasks.listPersonal, { today });
   const createTask = useMutation(api.tasks.createTask);
 
@@ -28,6 +35,7 @@ export default function TasksView({ today }: { today: string }) {
       accent="#3a6ea5"
       groups={groups}
       today={today}
+      onOpenProject={onOpenProject}
       showTeamChip={false}
       loading={tasks === undefined}
       emptyText="No tienes tareas personales todavía. Añade la primera abajo."

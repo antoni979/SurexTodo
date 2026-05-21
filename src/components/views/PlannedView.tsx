@@ -1,5 +1,6 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 import {
   type EnrichedTask,
   type Priority,
@@ -20,7 +21,13 @@ function byDueThenPriority(today: string) {
   };
 }
 
-export default function PlannedView({ today }: { today: string }) {
+export default function PlannedView({
+  today,
+  onOpenProject,
+}: {
+  today: string;
+  onOpenProject?: (projectId: Id<"tasks">) => void;
+}) {
   const tasks = useQuery(api.tasks.listPlanned, { today });
   const createTask = useMutation(api.tasks.createTask);
 
@@ -63,6 +70,7 @@ export default function PlannedView({ today }: { today: string }) {
       accent="#b0489e"
       groups={groups}
       today={today}
+      onOpenProject={onOpenProject}
       showTeamChip={true}
       loading={tasks === undefined}
       emptyText="No tienes tareas con fecha de vencimiento. Las tareas de equipo asignadas a ti también aparecerán aquí."

@@ -8,8 +8,15 @@ import {
   PRIORITIES,
   PRIORITY_META,
 } from "../util";
-import { CloseIcon, TrashIcon, CheckIcon, SunIcon } from "./icons";
+import {
+  CloseIcon,
+  TrashIcon,
+  CheckIcon,
+  SunIcon,
+  FolderIcon,
+} from "./icons";
 import RecurrencePicker from "./RecurrencePicker";
+import SubtaskList from "./SubtaskList";
 
 type Member = { userId: Id<"users">; username: string };
 
@@ -18,24 +25,45 @@ export default function TaskDetail({
   today,
   members,
   onClose,
+  onOpenProject,
 }: {
   task: EnrichedTask;
   today: string;
   members?: Member[];
   onClose: () => void;
+  onOpenProject?: (projectId: Id<"tasks">) => void;
 }) {
   const updateTask = useMutation(api.tasks.updateTask);
   const toggleComplete = useMutation(api.tasks.toggleComplete);
   const setMyDay = useMutation(api.tasks.setMyDay);
   const deleteTask = useMutation(api.tasks.deleteTask);
+  const convertToProject = useMutation(api.projects.convertToProject);
 
   const [title, setTitle] = useState(task.title);
   const [note, setNote] = useState(task.note ?? "");
+  const [converting, setConverting] = useState(false);
 
   function saveTitle() {
     const t = title.trim();
     if (t && t !== task.title) void updateTask({ taskId: task._id, title: t });
     else if (!t) setTitle(task.title);
+  }
+
+  async function convert() {
+    if (converting) return;
+    if (
+      !confirm(
+        "¿Convertir esta tarea en proyecto? Podrás añadir tareas, subtareas, hitos y un tablero kanban.",
+      )
+    )
+      return;
+    setConverting(true);
+    try {
+      await convertToProject({ taskId: task._id });
+      if (onOpenProject) onOpenProject(task._id);
+    } finally {
+      setConverting(false);
+    }
   }
 
   return (
@@ -62,6 +90,16 @@ export default function TaskDetail({
       </div>
 
       <div className="detail-body">
+        {task.projectName && onOpenProject && task.parentTaskId && (
+          <button
+            className="detail-action"
+            onClick={() => onOpenProject(task.parentTaskId as Id<"tasks">)}
+          >
+            <FolderIcon size={18} />
+            Ir al proyecto · {task.projectName}
+          </button>
+        )}
+
         <button
           className={"detail-action" + (task.inMyDay ? " on" : "")}
           onClick={() =>
@@ -179,6 +217,19 @@ export default function TaskDetail({
             }}
           />
         </div>
+
+        <SubtaskList parentId={task._id} today={today} />
+
+        {!task.parentTaskId && (
+          <button
+            className="detail-action convert-action"
+            onClick={() => void convert()}
+            disabled={converting}
+          >
+            <FolderIcon size={18} />
+            Convertir en proyecto
+          </button>
+        )}
       </div>
 
       <div className="detail-foot">

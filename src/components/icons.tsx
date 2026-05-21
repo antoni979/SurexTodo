@@ -73,6 +73,32 @@ export const RepeatIcon = svg(
   </>,
 );
 
+export const FolderIcon = svg(
+  <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />,
+);
+
+export const LinkIcon = svg(
+  <>
+    <path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5" />
+    <path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5" />
+  </>,
+);
+
+export const FlagIcon = svg(
+  <>
+    <path d="M4 22V4" />
+    <path d="M4 4h13l-2 4 2 4H4" />
+  </>,
+);
+
+export const KanbanIcon = svg(
+  <>
+    <rect x="3" y="4" width="5" height="16" rx="1" />
+    <rect x="10" y="4" width="5" height="10" rx="1" />
+    <rect x="17" y="4" width="4" height="13" rx="1" />
+  </>,
+);
+
 export const LogoutIcon = svg(
   <>
     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
