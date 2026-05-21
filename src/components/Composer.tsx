@@ -53,8 +53,12 @@ export default function Composer({
         assigneeId: assigneeId ? (assigneeId as Id<"users">) : undefined,
         recurrence,
       });
+      // Reset completo: cada tarea nueva parte de los valores por defecto
+      // para evitar arrastrar la prioridad/fecha/asignado de la anterior.
       setTitle("");
+      setPriority("media");
       setDueDate(defaultDueDate ?? "");
+      setAssigneeId("");
       setRecurrence(undefined);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo crear");

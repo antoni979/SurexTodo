@@ -146,23 +146,27 @@ export default function SubtaskList({
         ))}
       </div>
       <form className="subtask-add" onSubmit={add}>
-        <span className="composer-plus">
-          <PlusIcon size={14} />
-        </span>
-        <input
-          type="text"
-          value={title}
-          placeholder="Añadir subtarea"
-          onChange={(e) => setTitle(e.target.value)}
-        />
-        <DateChip value={date} onChange={setDate} today={today} />
-        <button
-          type="submit"
-          className="btn-primary btn-sm"
-          disabled={busy || !title.trim()}
-        >
-          Añadir
-        </button>
+        <div className="subtask-add-main">
+          <span className="composer-plus">
+            <PlusIcon size={14} />
+          </span>
+          <input
+            type="text"
+            value={title}
+            placeholder="Añadir subtarea"
+            onChange={(e) => setTitle(e.target.value)}
+          />
+        </div>
+        <div className="subtask-add-actions">
+          <DateChip value={date} onChange={setDate} today={today} />
+          <button
+            type="submit"
+            className="btn-primary btn-sm"
+            disabled={busy || !title.trim()}
+          >
+            Añadir
+          </button>
+        </div>
       </form>
     </div>
   );

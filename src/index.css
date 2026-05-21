@@ -1262,13 +1262,14 @@ input[type="date"]:hover::-webkit-calendar-picker-indicator {
 .subtask-row {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
   padding: 7px 10px;
   border-radius: 8px;
   background: #fff;
   border: 1px solid var(--border);
   font-size: 13.5px;
   transition: border-color 0.12s;
+  min-width: 0;
 }
 .subtask-row:hover {
   border-color: var(--border-strong);
@@ -1291,12 +1292,13 @@ input[type="date"]:hover::-webkit-calendar-picker-indicator {
 }
 .subtask-del {
   padding: 3px;
+  flex-shrink: 0;
 }
 .subtask-add {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 8px;
-  padding: 8px 10px;
+  padding: 10px;
   border: 1px dashed var(--border-strong);
   border-radius: 9px;
   background: #fafafa;
@@ -1306,13 +1308,33 @@ input[type="date"]:hover::-webkit-calendar-picker-indicator {
   border-color: var(--accent);
   background: #fff;
 }
+.subtask-add-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.subtask-add-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
 .subtask-add input[type="text"] {
   flex: 1;
+  min-width: 0;
   border: none;
   outline: none;
   padding: 4px 2px;
   background: transparent;
   font-size: 13.5px;
+}
+.subtask-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .convert-action {
   border-color: #d6bcfa;
