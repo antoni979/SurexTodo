@@ -104,6 +104,15 @@ export default defineSchema({
     url: v.string(),
   }).index("by_project", ["projectId"]),
 
+  attachments: defineTable({
+    taskId: v.id("tasks"),
+    storageId: v.id("_storage"),
+    name: v.string(),
+    size: v.number(),
+    mimeType: v.string(),
+    uploaderId: v.id("users"),
+  }).index("by_task", ["taskId"]),
+
   myDay: defineTable({
     userId: v.id("users"),
     taskId: v.id("tasks"),

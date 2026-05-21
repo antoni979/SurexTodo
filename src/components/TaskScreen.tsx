@@ -3,6 +3,7 @@ import type { Id } from "../../convex/_generated/dataModel";
 import type { EnrichedTask } from "../util";
 import TaskRow from "./TaskRow";
 import TaskDetail from "./TaskDetail";
+import { SearchIcon } from "./icons";
 
 type Member = { userId: Id<"users">; username: string };
 
@@ -36,8 +37,21 @@ export default function TaskScreen({
   onOpenProject?: (projectId: Id<"tasks">) => void;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
-  const allTasks = groups.flatMap((g) => g.tasks);
+  const q = search.trim().toLowerCase();
+  const filteredGroups = q
+    ? groups.map((g) => ({
+        ...g,
+        tasks: g.tasks.filter(
+          (t) =>
+            t.title.toLowerCase().includes(q) ||
+            (t.note ?? "").toLowerCase().includes(q),
+        ),
+      }))
+    : groups;
+
+  const allTasks = filteredGroups.flatMap((g) => g.tasks);
   const selectedTask =
     allTasks.find((t) => t._id === selectedId) ?? null;
   const total = allTasks.length;
@@ -48,6 +62,17 @@ export default function TaskScreen({
         <header className="screen-head" style={{ color: accent }}>
           <h1>{title}</h1>
           {subtitle && <p className="screen-sub">{subtitle}</p>}
+          <div className="screen-toolbar">
+            <div className="search-input">
+              <SearchIcon size={15} />
+              <input
+                type="search"
+                value={search}
+                placeholder="Buscar en estas tareas…"
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
         </header>
 
         <div className="screen-scroll">
@@ -63,7 +88,7 @@ export default function TaskScreen({
           )}
 
           {!loading &&
-            groups.map((group, i) =>
+            filteredGroups.map((group, i) =>
               group.tasks.length === 0 ? null : (
                 <section key={group.label ?? i} className="task-group">
                   {group.label && (

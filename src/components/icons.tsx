@@ -73,6 +73,25 @@ export const RepeatIcon = svg(
   </>,
 );
 
+export const SearchIcon = svg(
+  <>
+    <circle cx="11" cy="11" r="7" />
+    <path d="m20 20-3.5-3.5" />
+  </>,
+);
+
+export const PaperclipIcon = svg(
+  <path d="M21 12.5l-8.5 8.5a5.5 5.5 0 1 1-7.78-7.78l9.19-9.19a3.67 3.67 0 0 1 5.19 5.19L9.9 18.42a1.83 1.83 0 0 1-2.6-2.6l8.5-8.5" />,
+);
+
+export const DownloadIcon = svg(
+  <>
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <path d="M7 10l5 5 5-5" />
+    <path d="M12 15V3" />
+  </>,
+);
+
 export const FolderIcon = svg(
   <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />,
 );

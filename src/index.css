@@ -1,14 +1,25 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+
 :root {
-  --bg: #ffffff;
-  --sidebar-bg: #faf9f8;
-  --border: #e6e4e2;
-  --text: #242424;
-  --text-soft: #6b6b6b;
-  --accent: #2563eb;
-  --accent-soft: #e8f0fe;
-  --danger: #dc2626;
+  --bg: #fbfbfb;
+  --surface: #ffffff;
+  --sidebar-bg: #f5f4f2;
+  --border: #e5e2dd;
+  --border-strong: #d4d0c9;
+  --text: #1f1f1f;
+  --text-soft: #6f6f6f;
+  --text-muted: #9a9a9a;
+  --accent: #2f5fb8;
+  --accent-soft: #e7eefb;
+  --accent-strong: #234aa3;
+  --warm: #b45309;
+  --good: #15803d;
+  --danger: #c0392b;
   --radius: 10px;
-  --shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+  --radius-lg: 14px;
+  --shadow: 0 10px 32px rgba(20, 30, 60, 0.12);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --ring: 0 0 0 3px rgba(47, 95, 184, 0.18);
 }
 
 * {
@@ -25,13 +36,21 @@ body,
 
 body {
   font-family:
-    "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial,
-    sans-serif;
+    "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica,
+    Arial, sans-serif;
   color: var(--text);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
   overflow-x: hidden;
+  letter-spacing: -0.005em;
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.02em;
 }
 
 button {
@@ -46,6 +65,53 @@ textarea {
   /* 16px evita el zoom automático de los inputs en iOS Safari */
   font-size: 16px;
   color: var(--text);
+}
+
+/* Selects con un chevron propio y look consistente */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: #fff;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'><path d='M1 1l4 4 4-4' stroke='%236f6f6f' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px !important;
+  cursor: pointer;
+}
+select:hover {
+  border-color: var(--border-strong);
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="url"],
+input[type="search"],
+input[type="date"],
+select,
+textarea {
+  font-size: 14px;
+  transition:
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent) !important;
+  box-shadow: var(--ring);
+}
+
+/* Date inputs: hide spinners but keep native picker */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
+input[type="date"]:hover::-webkit-calendar-picker-indicator {
+  opacity: 1;
 }
 
 /* ---------- buttons ---------- */
@@ -290,11 +356,14 @@ textarea {
 }
 
 .sidebar-section {
-  margin-top: 18px;
-  flex: 1;
-  min-height: 0;
+  margin-top: 14px;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+}
+.sidebar-spacer {
+  flex: 1;
+  min-height: 8px;
 }
 .sidebar-section-title {
   display: flex;
@@ -312,6 +381,7 @@ textarea {
   flex-direction: column;
   gap: 2px;
   overflow-y: auto;
+  max-height: 260px;
 }
 .team-dot {
   width: 9px;
@@ -383,16 +453,53 @@ textarea {
   min-width: 0;
 }
 .screen-head {
-  padding: 26px 32px 10px;
+  padding: 28px 36px 14px;
+  position: relative;
 }
 .screen-head h1 {
   margin: 0;
-  font-size: 26px;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
 }
 .screen-sub {
-  margin: 4px 0 0;
+  margin: 6px 0 0;
   font-size: 13px;
   color: var(--text-soft);
+  font-weight: 500;
+}
+.screen-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+.search-input {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+  max-width: 360px;
+}
+.search-input svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.search-input input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 9px 12px 9px 36px;
+  background: #fff;
+  font-size: 14px;
+  outline: none;
+}
+.search-input input::placeholder {
+  color: var(--text-muted);
 }
 .screen-scroll {
   flex: 1;
@@ -414,10 +521,15 @@ textarea {
 .composer {
   background: #fff;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  padding: 8px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 10px 12px;
   margin-bottom: 18px;
+  transition: border-color 0.15s;
+}
+.composer:focus-within {
+  border-color: var(--accent);
+  box-shadow: var(--ring);
 }
 .composer-main {
   display: flex;
@@ -446,9 +558,11 @@ textarea {
 .composer-options select,
 .composer-options input {
   border: 1px solid var(--border);
-  border-radius: 7px;
-  padding: 6px 8px;
+  border-radius: 8px;
+  padding: 7px 10px;
   background: #fff;
+  font-size: 13px;
+  color: var(--text);
 }
 .composer-error {
   color: var(--danger);
@@ -486,17 +600,21 @@ textarea {
   background: #fff;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 11px 12px;
+  padding: 12px 14px;
   margin-bottom: 6px;
   cursor: pointer;
-  transition: background 0.12s;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    transform 0.15s;
 }
 .task-row:hover {
-  background: #fafafa;
+  border-color: var(--border-strong);
+  background: #fdfdfd;
 }
 .task-row.selected {
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
+  box-shadow: var(--ring);
 }
 .task-row.done .task-title {
   text-decoration: line-through;
@@ -649,12 +767,18 @@ textarea {
 .detail-field select,
 .detail-field textarea {
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 9px 10px;
+  border-radius: 9px;
+  padding: 10px 12px;
   background: #fff;
   outline: none;
   width: 100%;
   resize: vertical;
+  font-size: 14px;
+}
+.detail-field textarea {
+  min-height: 180px;
+  line-height: 1.5;
+  font-family: inherit;
 }
 .detail-field input:focus,
 .detail-field select:focus,
@@ -901,6 +1025,209 @@ textarea {
   color: #7c3aed;
 }
 
+/* ---------- date chip (subtarea) ---------- */
+
+.subtask-date-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.date-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: #f3f3f1;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  padding: 4px 9px;
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    color 0.12s,
+    border-color 0.12s;
+}
+.date-chip:hover {
+  background: #e9e9e6;
+  color: var(--text);
+}
+.date-chip.set {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  border-color: #c9dafb;
+}
+.date-chip.set.overdue {
+  background: #fdecec;
+  color: var(--danger);
+  border-color: #f6c8c8;
+}
+.date-chip-clear {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 4px;
+  cursor: pointer;
+}
+.date-chip-clear:hover {
+  color: var(--danger);
+}
+.date-chip-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  pointer-events: none;
+  /* The input still lives in the DOM so showPicker() can target it */
+}
+
+/* ---------- search input ---------- */
+
+.search-input-compact {
+  max-width: 240px;
+  min-width: 140px;
+  margin-left: auto;
+}
+.search-input-compact input {
+  padding: 7px 10px 7px 32px;
+  font-size: 13px;
+  border-radius: 8px;
+}
+.search-input-compact svg {
+  left: 10px;
+}
+
+/* ---------- team: assignee filter chips ---------- */
+
+.assignee-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 0 18px;
+  padding: 8px 10px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.assignee-filter-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-soft);
+  margin-right: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f3f3f1;
+  border: 1px solid transparent;
+  border-radius: 16px;
+  padding: 4px 10px;
+  font-size: 12.5px;
+  color: var(--text-soft);
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    color 0.12s,
+    border-color 0.12s;
+}
+.filter-chip:hover {
+  background: #e8e8e4;
+  color: var(--text);
+}
+.filter-chip.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.filter-chip.active .avatar {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+/* ---------- attachments ---------- */
+
+.attachments {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+.attachments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.attachment-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--text-soft);
+}
+.attachment-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.attachment-name {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+}
+.attachment-name:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.attachment-size {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.attachment-drop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: 10px;
+  color: var(--text-soft);
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.attachment-drop:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.attachment-drop.busy {
+  opacity: 0.7;
+  cursor: progress;
+}
+
 /* ---------- subtasks ---------- */
 
 .subtasks {
@@ -935,12 +1262,16 @@ textarea {
 .subtask-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: 7px;
+  gap: 9px;
+  padding: 7px 10px;
+  border-radius: 8px;
   background: #fff;
   border: 1px solid var(--border);
-  font-size: 13px;
+  font-size: 13.5px;
+  transition: border-color 0.12s;
+}
+.subtask-row:hover {
+  border-color: var(--border-strong);
 }
 .subtask-row.done .subtask-title {
   text-decoration: line-through;
@@ -958,42 +1289,30 @@ textarea {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.subtask-date {
-  width: 130px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 3px 5px;
-  font-size: 12px;
-}
-.subtask-due {
-  font-size: 11px;
-  color: var(--text-soft);
-}
-.subtask-due.overdue {
-  color: var(--danger);
-}
 .subtask-del {
   padding: 3px;
 }
 .subtask-add {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px;
-  border: 1px dashed #cfcfcf;
-  border-radius: 7px;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 9px;
+  background: #fafafa;
+  transition: border-color 0.15s;
+}
+.subtask-add:focus-within {
+  border-color: var(--accent);
+  background: #fff;
 }
 .subtask-add input[type="text"] {
   flex: 1;
   border: none;
   outline: none;
-  padding: 5px;
+  padding: 4px 2px;
   background: transparent;
-}
-.subtask-add input[type="date"] {
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 3px 5px;
+  font-size: 13.5px;
 }
 .convert-action {
   border-color: #d6bcfa;
@@ -1169,10 +1488,17 @@ textarea {
 
 .project-tabs {
   display: flex;
+  align-items: center;
   gap: 4px;
   background: #fff;
   border-bottom: 1px solid var(--border);
   padding: 0 22px;
+}
+.project-tabs-spacer {
+  flex: 1;
+}
+.project-tabs .search-input {
+  padding: 8px 0;
 }
 .tab-btn {
   background: transparent;

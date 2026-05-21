@@ -23,6 +23,7 @@ import {
   KanbanIcon,
   LinkIcon,
   PlusIcon,
+  SearchIcon,
   TrashIcon,
 } from "../icons";
 
@@ -36,6 +37,7 @@ export default function ProjectView({
   const project = useQuery(api.projects.getProject, { projectId });
 
   const [tab, setTab] = useState<"board" | "list">("board");
+  const [search, setSearch] = useState("");
 
   if (project === undefined) {
     return (
@@ -74,13 +76,23 @@ export default function ProjectView({
         >
           Lista
         </button>
+        <div className="project-tabs-spacer" />
+        <div className="search-input search-input-compact">
+          <SearchIcon size={14} />
+          <input
+            type="search"
+            value={search}
+            placeholder="Buscar tarea…"
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
       </div>
       <div className="screen-scroll project-scroll">
         <ProjectMetaPanel project={project} />
         {tab === "board" ? (
-          <KanbanBoard project={project} today={today} />
+          <KanbanBoard project={project} today={today} search={search} />
         ) : (
-          <TaskListPanel project={project} today={today} />
+          <TaskListPanel project={project} today={today} search={search} />
         )}
         <MilestonesPanel project={project} />
         <LinksPanel project={project} />
@@ -352,9 +364,11 @@ function ProjectMetaPanel({ project }: { project: ProjectDetail }) {
 function KanbanBoard({
   project,
   today,
+  search,
 }: {
   project: ProjectDetail;
   today: string;
+  search: string;
 }) {
   const moveTask = useMutation(api.tasks.moveTaskInKanban);
   const createTask = useMutation(api.tasks.createTask);
@@ -365,12 +379,14 @@ function KanbanBoard({
   const [newPriority, setNewPriority] = useState<Priority>("media");
   const [newAssignee, setNewAssignee] = useState("");
 
+  const q = search.trim().toLowerCase();
   const byCol: Record<KanbanStatus, ProjectTask[]> = {
     todo: [],
     in_progress: [],
     done: [],
   };
   for (const t of project.tasks) {
+    if (q && !t.title.toLowerCase().includes(q)) continue;
     const col = (t.kanbanStatus as KanbanStatus) ?? "todo";
     byCol[col].push(t);
   }
@@ -689,24 +705,32 @@ function KanbanCardSubAdd({ taskId }: { taskId: Id<"tasks"> }) {
 function TaskListPanel({
   project,
   today,
+  search,
 }: {
   project: ProjectDetail;
   today: string;
+  search: string;
 }) {
   const toggle = useMutation(api.tasks.toggleComplete);
   const deleteTask = useMutation(api.tasks.deleteTask);
+  const q = search.trim().toLowerCase();
+  const filtered = q
+    ? project.tasks.filter((t) => t.title.toLowerCase().includes(q))
+    : project.tasks;
   return (
     <section className="task-group project-list">
       <div className="group-label">
         Todas las tareas
-        <span className="group-count">{project.tasks.length}</span>
+        <span className="group-count">{filtered.length}</span>
       </div>
-      {project.tasks.length === 0 && (
+      {filtered.length === 0 && (
         <p className="screen-empty">
-          Añade tareas al proyecto desde el tablero.
+          {q
+            ? "Ninguna tarea coincide con tu búsqueda."
+            : "Añade tareas al proyecto desde el tablero."}
         </p>
       )}
-      {project.tasks.map((t) => {
+      {filtered.map((t) => {
         const meta = PRIORITY_META[t.priority as Priority];
         const due = t.dueDate ? formatDue(t.dueDate, today) : null;
         return (

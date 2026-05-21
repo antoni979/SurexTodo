@@ -17,6 +17,7 @@ import {
 } from "./icons";
 import RecurrencePicker from "./RecurrencePicker";
 import SubtaskList from "./SubtaskList";
+import AttachmentsPanel from "./AttachmentsPanel";
 
 type Member = { userId: Id<"users">; username: string };
 
@@ -205,8 +206,8 @@ export default function TaskDetail({
           <label>Nota</label>
           <textarea
             value={note}
-            placeholder="Añade detalles…"
-            rows={4}
+            placeholder="Añade detalles, contexto, decisiones tomadas…"
+            rows={9}
             onChange={(e) => setNote(e.target.value)}
             onBlur={() => {
               if (note !== (task.note ?? ""))
@@ -219,6 +220,8 @@ export default function TaskDetail({
         </div>
 
         <SubtaskList parentId={task._id} today={today} />
+
+        <AttachmentsPanel taskId={task._id} />
 
         {!task.parentTaskId && (
           <button

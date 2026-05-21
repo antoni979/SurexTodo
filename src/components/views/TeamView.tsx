@@ -100,9 +100,19 @@ export default function TeamView({
     );
   }
 
+  const [filter, setFilter] = useState<"all" | "mine" | "unassigned" | string>(
+    "all",
+  );
+
   const list = tasks ?? [];
-  const pending = sortTasks(list.filter((t) => !t.completed));
-  const done = sortTasks(list.filter((t) => t.completed));
+  const filtered = list.filter((t) => {
+    if (filter === "all") return true;
+    if (filter === "mine") return t.assigneeId === myUserId;
+    if (filter === "unassigned") return !t.assigneeId;
+    return t.assigneeId === filter;
+  });
+  const pending = sortTasks(filtered.filter((t) => !t.completed));
+  const done = sortTasks(filtered.filter((t) => t.completed));
 
   const groups: TaskGroup[] = [
     { tasks: pending },
@@ -124,7 +134,62 @@ export default function TeamView({
       loading={tasks === undefined}
       emptyText="Este equipo aún no tiene tareas. Crea una y asígnala a un miembro."
       beforeList={
-        <TeamBar teamId={teamId} members={team.members} myUserId={myUserId} />
+        <>
+          <TeamBar
+            teamId={teamId}
+            members={team.members}
+            myUserId={myUserId}
+          />
+          <div className="assignee-filter">
+            <span className="assignee-filter-label">Mostrar:</span>
+            <button
+              type="button"
+              className={
+                "filter-chip" + (filter === "all" ? " active" : "")
+              }
+              onClick={() => setFilter("all")}
+            >
+              Todas
+            </button>
+            <button
+              type="button"
+              className={
+                "filter-chip" + (filter === "mine" ? " active" : "")
+              }
+              onClick={() => setFilter("mine")}
+            >
+              Asignadas a mí
+            </button>
+            <button
+              type="button"
+              className={
+                "filter-chip" +
+                (filter === "unassigned" ? " active" : "")
+              }
+              onClick={() => setFilter("unassigned")}
+            >
+              Sin asignar
+            </button>
+            {team.members
+              .filter((m) => m.userId !== myUserId)
+              .map((m) => (
+                <button
+                  key={m.userId}
+                  type="button"
+                  className={
+                    "filter-chip" +
+                    (filter === m.userId ? " active" : "")
+                  }
+                  onClick={() => setFilter(m.userId)}
+                >
+                  <span className="avatar sm">
+                    {m.username.charAt(0).toUpperCase()}
+                  </span>
+                  {m.username}
+                </button>
+              ))}
+          </div>
+        </>
       }
       composer={
         <Composer

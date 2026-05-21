@@ -146,6 +146,8 @@ export default function Sidebar({
         </button>
       </div>
 
+      <div className="sidebar-spacer" />
+
       <div className="sidebar-footer">
         <div className="user-chip">
           <div className="avatar">{username.charAt(0).toUpperCase()}</div>

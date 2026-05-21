@@ -529,6 +529,19 @@ async function cascadeDelete(ctx: MutationCtx, taskId: Id<"tasks">) {
     .collect();
   for (const row of dayRows) await ctx.db.delete(row._id);
 
+  const atts = await ctx.db
+    .query("attachments")
+    .withIndex("by_task", (q) => q.eq("taskId", taskId))
+    .collect();
+  for (const a of atts) {
+    try {
+      await ctx.storage.delete(a.storageId);
+    } catch {
+      // storage already gone
+    }
+    await ctx.db.delete(a._id);
+  }
+
   await ctx.db.delete(taskId);
 }
 
