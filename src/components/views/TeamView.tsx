@@ -77,6 +77,9 @@ export default function TeamView({
   const team = useQuery(api.teams.getTeam, { teamId });
   const tasks = useQuery(api.tasks.listTeamTasks, { teamId, today });
   const createTask = useMutation(api.tasks.createTask);
+  const [filter, setFilter] = useState<"all" | "mine" | "unassigned" | string>(
+    "all",
+  );
 
   if (team === undefined) {
     return (
@@ -99,10 +102,6 @@ export default function TeamView({
       </div>
     );
   }
-
-  const [filter, setFilter] = useState<"all" | "mine" | "unassigned" | string>(
-    "all",
-  );
 
   const list = tasks ?? [];
   const filtered = list.filter((t) => {
