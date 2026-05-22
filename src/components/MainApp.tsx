@@ -27,7 +27,10 @@ export default function MainApp({
 }) {
   const [view, setView] = useState<View>({ kind: "myday" });
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [workspaceId, setWorkspaceId] = useState<Id<"workspaces"> | null>(null);
+  const [workspaceId, setWorkspaceId] = useState<Id<"workspaces"> | null>(() => {
+    const saved = localStorage.getItem("defaultWorkspace");
+    return saved ? (saved as Id<"workspaces">) : null;
+  });
   const [today, setToday] = useState(() => localToday());
 
   useEffect(() => {
@@ -64,7 +67,11 @@ export default function MainApp({
         onSelect={selectView}
         open={sidebarOpen}
         workspaceId={workspaceId}
-        onWorkspaceChange={setWorkspaceId}
+        onWorkspaceChange={(id) => {
+          setWorkspaceId(id);
+          if (id) localStorage.setItem("defaultWorkspace", id);
+          else localStorage.removeItem("defaultWorkspace");
+        }}
       />
       {sidebarOpen && (
         <div
