@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -21,16 +21,38 @@ export default function Sidebar({
   view,
   onSelect,
   open,
+  workspaceId,
+  onWorkspaceChange,
 }: {
   username: string;
   view: View;
   onSelect: (v: View) => void;
   open: boolean;
+  workspaceId: Id<"workspaces"> | null;
+  onWorkspaceChange: (id: Id<"workspaces"> | null) => void;
 }) {
-  const teams = useQuery(api.teams.listMyTeams) ?? [];
-  const projects = useQuery(api.projects.listMyProjects) ?? [];
+  const workspaces = useQuery(api.workspaces.listMyWorkspaces) ?? [];
+  const createWorkspace = useMutation(api.workspaces.createWorkspace);
+  const teams = useQuery(api.teams.listMyTeams, workspaceId ? { workspaceId } : {}) ?? [];
+  const projects = useQuery(api.projects.listMyProjects, workspaceId ? { workspaceId } : {}) ?? [];
   const { signOut } = useAuthActions();
   const [showNewTeam, setShowNewTeam] = useState(false);
+  const [showNewWorkspace, setShowNewWorkspace] = useState(false);
+  const [newWsName, setNewWsName] = useState("");
+  const [wsError, setWsError] = useState<string | null>(null);
+
+  async function handleCreateWorkspace(e: React.FormEvent) {
+    e.preventDefault();
+    setWsError(null);
+    try {
+      const id = await createWorkspace({ name: newWsName });
+      setNewWsName("");
+      setShowNewWorkspace(false);
+      onWorkspaceChange(id);
+    } catch (err) {
+      setWsError(err instanceof Error ? err.message : "Error");
+    }
+  }
 
   function navClass(active: boolean) {
     return active ? "nav-item active" : "nav-item";
@@ -42,6 +64,47 @@ export default function Sidebar({
         <img src="/icon.svg" alt="" width={28} height={28} />
         <span>SurexTodo</span>
       </div>
+
+      {/* Workspace switcher */}
+      <div className="workspace-switcher">
+        <button
+          className={"ws-pill" + (workspaceId === null ? " active" : "")}
+          onClick={() => onWorkspaceChange(null)}
+        >
+          Personal
+        </button>
+        {workspaces.map((ws) => (
+          <button
+            key={ws._id}
+            className={"ws-pill" + (workspaceId === ws._id ? " active" : "")}
+            onClick={() => onWorkspaceChange(ws._id)}
+          >
+            {ws.name}
+          </button>
+        ))}
+        <button
+          className="ws-pill ws-add"
+          title="Nuevo entorno"
+          onClick={() => setShowNewWorkspace(!showNewWorkspace)}
+        >
+          <PlusIcon size={12} />
+        </button>
+      </div>
+      {showNewWorkspace && (
+        <form className="ws-new-form" onSubmit={handleCreateWorkspace}>
+          <input
+            type="text"
+            value={newWsName}
+            onChange={(e) => setNewWsName(e.target.value)}
+            placeholder="Nombre del entorno"
+            autoFocus
+          />
+          <button type="submit" className="btn-primary btn-sm" disabled={!newWsName.trim()}>
+            Crear
+          </button>
+          {wsError && <span className="composer-error">{wsError}</span>}
+        </form>
+      )}
 
       <nav className="sidebar-nav">
         <button
@@ -164,6 +227,7 @@ export default function Sidebar({
 
       {showNewTeam && (
         <NewTeamModal
+          workspaceId={workspaceId}
           onClose={() => setShowNewTeam(false)}
           onCreated={(teamId) => {
             setShowNewTeam(false);

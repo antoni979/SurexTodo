@@ -27,6 +27,7 @@ export default function MainApp({
 }) {
   const [view, setView] = useState<View>({ kind: "myday" });
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [workspaceId, setWorkspaceId] = useState<Id<"workspaces"> | null>(null);
   const [today, setToday] = useState(() => localToday());
 
   useEffect(() => {
@@ -62,6 +63,8 @@ export default function MainApp({
         view={view}
         onSelect={selectView}
         open={sidebarOpen}
+        workspaceId={workspaceId}
+        onWorkspaceChange={setWorkspaceId}
       />
       {sidebarOpen && (
         <div
@@ -84,7 +87,7 @@ export default function MainApp({
           <PlannedView today={today} onOpenProject={openProject} />
         )}
         {view.kind === "tasks" && (
-          <TasksView today={today} onOpenProject={openProject} />
+          <TasksView today={today} onOpenProject={openProject} workspaceId={workspaceId} />
         )}
         {view.kind === "team" && (
           <TeamView
@@ -95,7 +98,7 @@ export default function MainApp({
             onOpenProject={openProject}
           />
         )}
-        {view.kind === "projects" && <ProjectsView onOpen={openProject} />}
+        {view.kind === "projects" && <ProjectsView onOpen={openProject} workspaceId={workspaceId} />}
         {view.kind === "project" && (
           <ProjectView key={view.projectId} projectId={view.projectId} today={today} />
         )}

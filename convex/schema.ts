@@ -45,10 +45,26 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_username", ["username"]),
 
-  teams: defineTable({
+  workspaces: defineTable({
     name: v.string(),
     ownerId: v.id("users"),
   }).index("by_owner", ["ownerId"]),
+
+  workspaceMembers: defineTable({
+    workspaceId: v.id("workspaces"),
+    userId: v.id("users"),
+  })
+    .index("by_workspace", ["workspaceId"])
+    .index("by_user", ["userId"])
+    .index("by_workspace_user", ["workspaceId", "userId"]),
+
+  teams: defineTable({
+    name: v.string(),
+    ownerId: v.id("users"),
+    workspaceId: v.optional(v.id("workspaces")),
+  })
+    .index("by_owner", ["ownerId"])
+    .index("by_workspace", ["workspaceId"]),
 
   teamMembers: defineTable({
     teamId: v.id("teams"),
@@ -68,6 +84,7 @@ export default defineSchema({
     teamId: v.optional(v.id("teams")),
     assigneeId: v.optional(v.id("users")),
     recurrence: v.optional(recurrenceValidator),
+    workspaceId: v.optional(v.id("workspaces")),
 
     // --- Subtasks: parentTaskId points to the owning task or project.
     parentTaskId: v.optional(v.id("tasks")),

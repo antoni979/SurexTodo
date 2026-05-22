@@ -184,8 +184,11 @@ async function isTopLevel(ctx: QueryCtx, task: Doc<"tasks">) {
 
 // Personal tasks: created by me and not attached to a team.
 export const listPersonal = query({
-  args: { today: v.optional(v.string()) },
-  handler: async (ctx, { today }) => {
+  args: {
+    today: v.optional(v.string()),
+    workspaceId: v.optional(v.id("workspaces")),
+  },
+  handler: async (ctx, { today, workspaceId }) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
     const all = await ctx.db
@@ -193,8 +196,10 @@ export const listPersonal = query({
       .withIndex("by_creator", (q) => q.eq("creatorId", userId))
       .collect();
     const personal = [];
+    const filterWS = workspaceId ?? null;
     for (const t of all) {
       if (t.teamId) continue;
+      if ((t.workspaceId ?? null) !== filterWS) continue;
       if (await isTopLevel(ctx, t)) personal.push(t);
     }
     const myDaySet = await myDayTaskIds(ctx, userId, today);
@@ -326,6 +331,7 @@ export const createTask = mutation({
     addToMyDay: v.optional(v.boolean()),
     today: v.optional(v.string()),
     parentTaskId: v.optional(v.id("tasks")),
+    workspaceId: v.optional(v.id("workspaces")),
   },
   handler: async (ctx, args) => {
     const userId = await requireUser(ctx);
@@ -365,6 +371,7 @@ export const createTask = mutation({
       recurrence: args.recurrence,
       parentTaskId: args.parentTaskId,
       kanbanStatus: args.parentTaskId ? "todo" : undefined,
+      workspaceId: args.workspaceId,
     });
 
     if (args.addToMyDay && args.today) {

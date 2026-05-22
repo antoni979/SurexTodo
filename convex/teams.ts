@@ -25,8 +25,8 @@ async function isMember(
 }
 
 export const listMyTeams = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { workspaceId: v.optional(v.id("workspaces")) },
+  handler: async (ctx, { workspaceId }) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
     const memberships = await ctx.db
@@ -34,9 +34,12 @@ export const listMyTeams = query({
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect();
     const teams = [];
+    const filterWS = workspaceId ?? null;
     for (const m of memberships) {
       const team = await ctx.db.get(m.teamId);
-      if (team) teams.push(team);
+      if (!team) continue;
+      if ((team.workspaceId ?? null) !== filterWS) continue;
+      teams.push(team);
     }
     teams.sort((a, b) => a.name.localeCompare(b.name));
     return teams;
@@ -44,14 +47,15 @@ export const listMyTeams = query({
 });
 
 export const createTeam = mutation({
-  args: { name: v.string() },
-  handler: async (ctx, { name }) => {
+  args: { name: v.string(), workspaceId: v.optional(v.id("workspaces")) },
+  handler: async (ctx, { name, workspaceId }) => {
     const userId = await requireUser(ctx);
     const clean = name.trim();
     if (!clean) throw new Error("El equipo necesita un nombre");
     const teamId = await ctx.db.insert("teams", {
       name: clean,
       ownerId: userId,
+      workspaceId,
     });
     await ctx.db.insert("teamMembers", { teamId, userId });
     return teamId;

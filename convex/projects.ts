@@ -58,25 +58,32 @@ function projectProgress(children: Doc<"tasks">[]) {
 // List all projects the user can see: personal projects + team projects
 // from teams they belong to.
 export const listMyProjects = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { workspaceId: v.optional(v.id("workspaces")) },
+  handler: async (ctx, { workspaceId }) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
 
-    // Personal projects (created by me, no team)
+    const filterWS = workspaceId ?? null;
+
+    // Personal projects (created by me, no team, matching workspace)
     const mine = await ctx.db
       .query("tasks")
       .withIndex("by_creator", (q) => q.eq("creatorId", userId))
       .collect();
-    const personalProjects = mine.filter((t) => t.isProject && !t.teamId);
+    const personalProjects = mine.filter(
+      (t) => t.isProject && !t.teamId && (t.workspaceId ?? null) === filterWS,
+    );
 
-    // Team projects (every team I'm in)
+    // Team projects (teams I'm in, matching workspace)
     const memberships = await ctx.db
       .query("teamMembers")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect();
     const teamProjects: Doc<"tasks">[] = [];
     for (const m of memberships) {
+      const team = await ctx.db.get(m.teamId);
+      if (!team) continue;
+      if ((team.workspaceId ?? null) !== filterWS) continue;
       const ts = await ctx.db
         .query("tasks")
         .withIndex("by_team", (q) => q.eq("teamId", m.teamId))

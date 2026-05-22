@@ -7,9 +7,11 @@ import { CloseIcon } from "./icons";
 export default function NewTeamModal({
   onClose,
   onCreated,
+  workspaceId,
 }: {
   onClose: () => void;
   onCreated: (teamId: Id<"teams">) => void;
+  workspaceId?: Id<"workspaces"> | null;
 }) {
   const createTeam = useMutation(api.teams.createTeam);
   const [name, setName] = useState("");
@@ -21,7 +23,10 @@ export default function NewTeamModal({
     setError(null);
     setLoading(true);
     try {
-      const teamId = await createTeam({ name });
+      const teamId = await createTeam({
+        name,
+        ...(workspaceId ? { workspaceId } : {}),
+      });
       onCreated(teamId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo crear");

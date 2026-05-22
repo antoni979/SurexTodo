@@ -11,10 +11,14 @@ import { FolderIcon } from "../icons";
 
 export default function ProjectsView({
   onOpen,
+  workspaceId,
 }: {
   onOpen: (projectId: Id<"tasks">) => void;
+  workspaceId?: Id<"workspaces"> | null;
 }) {
-  const projects = useQuery(api.projects.listMyProjects);
+  const projects = useQuery(api.projects.listMyProjects, {
+    ...(workspaceId ? { workspaceId } : {}),
+  });
 
   if (projects === undefined) {
     return (
