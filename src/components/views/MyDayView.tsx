@@ -8,11 +8,16 @@ import TaskScreen, { type TaskGroup } from "../TaskScreen";
 export default function MyDayView({
   today,
   onOpenProject,
+  workspaceId,
 }: {
   today: string;
   onOpenProject?: (projectId: Id<"tasks">) => void;
+  workspaceId?: Id<"workspaces"> | null;
 }) {
-  const tasks = useQuery(api.tasks.listMyDay, { today });
+  const tasks = useQuery(api.tasks.listMyDay, {
+    today,
+    ...(workspaceId ? { workspaceId } : {}),
+  });
   const createTask = useMutation(api.tasks.createTask);
 
   const list = tasks ?? [];
@@ -46,6 +51,7 @@ export default function MyDayView({
               recurrence: d.recurrence,
               addToMyDay: true,
               today,
+              ...(workspaceId ? { workspaceId } : {}),
             }).then(() => undefined)
           }
         />

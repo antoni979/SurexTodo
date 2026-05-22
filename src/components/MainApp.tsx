@@ -88,10 +88,10 @@ export default function MainApp({
       </button>
       <main className="content">
         {view.kind === "myday" && (
-          <MyDayView today={today} onOpenProject={openProject} />
+          <MyDayView today={today} onOpenProject={openProject} workspaceId={workspaceId} />
         )}
         {view.kind === "planned" && (
-          <PlannedView today={today} onOpenProject={openProject} />
+          <PlannedView today={today} onOpenProject={openProject} workspaceId={workspaceId} />
         )}
         {view.kind === "tasks" && (
           <TasksView today={today} onOpenProject={openProject} workspaceId={workspaceId} />

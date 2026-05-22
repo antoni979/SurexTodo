@@ -24,11 +24,16 @@ function byDueThenPriority(today: string) {
 export default function PlannedView({
   today,
   onOpenProject,
+  workspaceId,
 }: {
   today: string;
   onOpenProject?: (projectId: Id<"tasks">) => void;
+  workspaceId?: Id<"workspaces"> | null;
 }) {
-  const tasks = useQuery(api.tasks.listPlanned, { today });
+  const tasks = useQuery(api.tasks.listPlanned, {
+    today,
+    ...(workspaceId ? { workspaceId } : {}),
+  });
   const createTask = useMutation(api.tasks.createTask);
 
   const list = tasks ?? [];
@@ -84,6 +89,7 @@ export default function PlannedView({
               priority: d.priority,
               dueDate: d.dueDate,
               recurrence: d.recurrence,
+              ...(workspaceId ? { workspaceId } : {}),
             }).then(() => undefined)
           }
         />

@@ -229,8 +229,8 @@ export const listTeamTasks = query({
 
 // Tasks I added to "Mi día" for the given date.
 export const listMyDay = query({
-  args: { today: v.string() },
-  handler: async (ctx, { today }) => {
+  args: { today: v.string(), workspaceId: v.optional(v.id("workspaces")) },
+  handler: async (ctx, { today, workspaceId }) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
     const rows = await ctx.db
@@ -240,15 +240,22 @@ export const listMyDay = query({
       )
       .collect();
     const myDaySet = new Set(rows.map((r) => r.taskId as string));
+    const filterWS = workspaceId ?? null;
     const tasks = [];
     for (const row of rows) {
       const task = await ctx.db.get(row.taskId);
       if (!task) continue;
       if (task.isProject) continue;
-      // Subtasks (parent is a normal task) hidden, but project tasks ok.
       if (task.parentTaskId) {
         const parent = await ctx.db.get(task.parentTaskId);
         if (parent && !parent.isProject) continue;
+      }
+      // Filter by workspace: personal tasks by workspaceId, team tasks by team's workspace
+      if (task.teamId) {
+        const team = await ctx.db.get(task.teamId);
+        if ((team?.workspaceId ?? null) !== filterWS) continue;
+      } else {
+        if ((task.workspaceId ?? null) !== filterWS) continue;
       }
       tasks.push(await enrich(ctx, task, myDaySet));
     }
@@ -260,10 +267,12 @@ export const listMyDay = query({
 // ASSIGNED TO ME with a due date. A team task only shows here for the
 // person it is assigned to.
 export const listPlanned = query({
-  args: { today: v.string() },
-  handler: async (ctx, { today }) => {
+  args: { today: v.string(), workspaceId: v.optional(v.id("workspaces")) },
+  handler: async (ctx, { today, workspaceId }) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
+
+    const filterWS = workspaceId ?? null;
 
     const created = await ctx.db
       .query("tasks")
@@ -274,6 +283,7 @@ export const listPlanned = query({
     for (const t of created) {
       if (t.teamId) continue;
       if (!t.dueDate) continue;
+      if ((t.workspaceId ?? null) !== filterWS) continue;
       if (await isTopLevel(ctx, t)) personalWithDue.push(t);
     }
 
@@ -285,6 +295,8 @@ export const listPlanned = query({
     for (const t of assigned) {
       if (!t.teamId) continue;
       if (!t.dueDate) continue;
+      const team = await ctx.db.get(t.teamId);
+      if ((team?.workspaceId ?? null) !== filterWS) continue;
       if (await isTopLevel(ctx, t)) teamWithDue.push(t);
     }
 
