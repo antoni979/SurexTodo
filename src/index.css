@@ -566,6 +566,32 @@ input[type="date"]:hover::-webkit-calendar-picker-indicator {
 .search-input input::placeholder {
   color: var(--text-muted);
 }
+.toggle-done-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border-strong);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.toggle-done-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.toggle-done-btn.active {
+  border-color: var(--border-strong);
+  color: var(--text-soft);
+  background: var(--surface);
+}
+
 .screen-scroll {
   flex: 1;
   overflow-y: auto;

@@ -38,18 +38,22 @@ export default function TaskScreen({
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [showDone, setShowDone] = useState(() => {
+    return localStorage.getItem("showDone") !== "false";
+  });
 
   const q = search.trim().toLowerCase();
-  const filteredGroups = q
-    ? groups.map((g) => ({
-        ...g,
-        tasks: g.tasks.filter(
-          (t) =>
-            t.title.toLowerCase().includes(q) ||
-            (t.note ?? "").toLowerCase().includes(q),
-        ),
-      }))
-    : groups;
+  const filteredGroups = groups
+    .map((g) => ({
+      ...g,
+      tasks: g.tasks.filter((t) => {
+        if (!showDone && t.completed) return false;
+        if (q) return t.title.toLowerCase().includes(q) || (t.note ?? "").toLowerCase().includes(q);
+        return true;
+      }),
+    }));
+
+  const doneCount = groups.flatMap((g) => g.tasks).filter((t) => t.completed).length;
 
   const allTasks = filteredGroups.flatMap((g) => g.tasks);
   const selectedTask =
@@ -72,6 +76,19 @@ export default function TaskScreen({
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
+            {doneCount > 0 && (
+              <button
+                className={"toggle-done-btn" + (showDone ? " active" : "")}
+                onClick={() => {
+                  const next = !showDone;
+                  setShowDone(next);
+                  localStorage.setItem("showDone", String(next));
+                }}
+                title={showDone ? "Ocultar completadas" : "Mostrar completadas"}
+              >
+                {showDone ? `Ocultar completadas (${doneCount})` : `Mostrar completadas (${doneCount})`}
+              </button>
+            )}
           </div>
         </header>
 
