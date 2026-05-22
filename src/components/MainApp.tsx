@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Id } from "../../convex/_generated/dataModel";
 import { localToday } from "../util";
 import Sidebar from "./Sidebar";
@@ -27,7 +27,25 @@ export default function MainApp({
 }) {
   const [view, setView] = useState<View>({ kind: "myday" });
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const today = useMemo(() => localToday(), []);
+  const [today, setToday] = useState(() => localToday());
+
+  useEffect(() => {
+    function msUntilMidnight() {
+      const now = new Date();
+      const midnight = new Date(now);
+      midnight.setHours(24, 0, 0, 0);
+      return midnight.getTime() - now.getTime();
+    }
+    let timeout: ReturnType<typeof setTimeout>;
+    function scheduleUpdate() {
+      timeout = setTimeout(() => {
+        setToday(localToday());
+        scheduleUpdate();
+      }, msUntilMidnight());
+    }
+    scheduleUpdate();
+    return () => clearTimeout(timeout);
+  }, []);
 
   function selectView(v: View) {
     setView(v);
