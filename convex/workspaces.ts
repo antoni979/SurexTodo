@@ -89,6 +89,42 @@ export const addMember = mutation({
   },
 });
 
+// Migrates all tasks and teams that have no workspaceId to the named workspace.
+// Runs without auth check — only call from CLI/dashboard.
+export const migrateAllToWorkspace = mutation({
+  args: { workspaceName: v.string() },
+  handler: async (ctx, { workspaceName }) => {
+    const allWorkspaces = await ctx.db.query("workspaces").collect();
+    const ws = allWorkspaces.find(
+      (w) => w.name.toLowerCase() === workspaceName.toLowerCase(),
+    );
+    if (!ws) throw new Error(`Entorno "${workspaceName}" no encontrado`);
+    const workspaceId = ws._id;
+
+    // Migrate teams
+    const allTeams = await ctx.db.query("teams").collect();
+    let teamsUpdated = 0;
+    for (const team of allTeams) {
+      if (!team.workspaceId) {
+        await ctx.db.patch(team._id, { workspaceId });
+        teamsUpdated++;
+      }
+    }
+
+    // Migrate tasks (top-level only — subtasks inherit via their parent)
+    const allTasks = await ctx.db.query("tasks").collect();
+    let tasksUpdated = 0;
+    for (const task of allTasks) {
+      if (!task.workspaceId) {
+        await ctx.db.patch(task._id, { workspaceId });
+        tasksUpdated++;
+      }
+    }
+
+    return { teamsUpdated, tasksUpdated };
+  },
+});
+
 export const renameWorkspace = mutation({
   args: { workspaceId: v.id("workspaces"), name: v.string() },
   handler: async (ctx, { workspaceId, name }) => {
