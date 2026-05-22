@@ -4,9 +4,22 @@
       <stop offset="0" stop-color="#3b82f6"/>
       <stop offset="1" stop-color="#1d4ed8"/>
     </linearGradient>
+    <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="white" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
   </defs>
+  <!-- Fondo azul degradado con esquinas redondeadas estilo iOS -->
   <rect width="512" height="512" rx="112" fill="url(#g)"/>
-  <path d="M150 268l64 64 150-160" fill="none" stroke="#ffffff" stroke-width="44"
-    stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="370" cy="150" r="26" fill="#ffffff"/>
+  <!-- Brillo sutil superior -->
+  <rect width="512" height="512" rx="112" fill="url(#gloss)"/>
+  <!-- Tick grueso centrado -->
+  <polyline
+    points="118,264 218,364 394,148"
+    stroke="white"
+    stroke-width="62"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="none"
+  />
 </svg>
