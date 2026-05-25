@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { localToday } from "../util";
 import Sidebar from "./Sidebar";
@@ -31,6 +33,16 @@ export default function MainApp({
     const saved = localStorage.getItem("defaultWorkspace");
     return saved ? (saved as Id<"workspaces">) : null;
   });
+  const workspaces = useQuery(api.workspaces.listMyWorkspaces) ?? [];
+
+  // If no workspace saved yet and workspaces exist, auto-select the first one
+  useEffect(() => {
+    if (workspaceId === null && workspaces.length > 0 && !localStorage.getItem("defaultWorkspace")) {
+      const first = workspaces[0]._id;
+      setWorkspaceId(first);
+      localStorage.setItem("defaultWorkspace", first);
+    }
+  }, [workspaces, workspaceId]);
   const [today, setToday] = useState(() => localToday());
 
   useEffect(() => {

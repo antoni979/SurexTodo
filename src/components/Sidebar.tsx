@@ -67,12 +67,14 @@ export default function Sidebar({
 
       {/* Workspace switcher */}
       <div className="workspace-switcher">
-        <button
-          className={"ws-pill" + (workspaceId === null ? " active" : "")}
-          onClick={() => onWorkspaceChange(null)}
-        >
-          Personal
-        </button>
+        {workspaces.length === 0 && (
+          <button
+            className={"ws-pill" + (workspaceId === null ? " active" : "")}
+            onClick={() => onWorkspaceChange(null)}
+          >
+            Personal
+          </button>
+        )}
         {workspaces.map((ws) => (
           <button
             key={ws._id}
