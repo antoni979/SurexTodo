@@ -81,19 +81,19 @@ export default function TaskScreen({
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            {doneCount > 0 && (
-              <button
-                className={"toggle-done-btn" + (showDone ? " active" : "")}
-                onClick={() => {
-                  const next = !showDone;
-                  setShowDone(next);
-                  localStorage.setItem("showDone", String(next));
-                }}
-                title={showDone ? "Ocultar completadas" : "Mostrar completadas"}
-              >
-                {showDone ? `Ocultar completadas (${doneCount})` : `Mostrar completadas (${doneCount})`}
-              </button>
-            )}
+            <button
+              className={"toggle-done-btn" + (showDone ? " active" : "")}
+              onClick={() => {
+                const next = !showDone;
+                setShowDone(next);
+                localStorage.setItem("showDone", String(next));
+              }}
+              title={showDone ? "Ocultar completadas" : "Mostrar completadas"}
+            >
+              {showDone
+                ? `Ocultar completadas${doneCount > 0 ? ` (${doneCount})` : ""}`
+                : `Mostrar completadas${doneCount > 0 ? ` (${doneCount})` : ""}`}
+            </button>
           </div>
           {allTags.length > 0 && (
             <div className="tag-filter">
