@@ -182,6 +182,28 @@ async function isTopLevel(ctx: QueryCtx, task: Doc<"tasks">) {
 
 /* ---------- queries ---------- */
 
+// All unique tags used in tasks this user has created or is assigned to.
+export const listAllTags = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return [];
+    const created = await ctx.db
+      .query("tasks")
+      .withIndex("by_creator", (q) => q.eq("creatorId", userId))
+      .collect();
+    const assigned = await ctx.db
+      .query("tasks")
+      .withIndex("by_assignee", (q) => q.eq("assigneeId", userId))
+      .collect();
+    const tagSet = new Set<string>();
+    for (const t of [...created, ...assigned]) {
+      for (const tag of t.tags ?? []) tagSet.add(tag);
+    }
+    return Array.from(tagSet).sort();
+  },
+});
+
 // Personal tasks: created by me and not attached to a team.
 export const listPersonal = query({
   args: {

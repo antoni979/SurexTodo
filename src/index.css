@@ -801,12 +801,14 @@ input[type="date"]:hover::-webkit-calendar-picker-indicator {
   opacity: 0.6;
 }
 .tag-chip-remove:hover { opacity: 1; }
+.tag-autocomplete {
+  position: relative;
+}
 .tag-input {
-  flex: 1;
-  min-width: 120px;
+  width: 100%;
   border: 1.5px solid var(--border);
   border-radius: 7px;
-  padding: 4px 10px;
+  padding: 6px 10px;
   font-size: 13px;
   font-family: inherit;
   background: var(--surface);
@@ -816,6 +818,36 @@ input[type="date"]:hover::-webkit-calendar-picker-indicator {
   outline: none;
   border-color: #6d28d9;
   box-shadow: 0 0 0 3px rgba(109,40,217,0.1);
+}
+.tag-suggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1.5px solid var(--border-strong);
+  border-radius: 9px;
+  box-shadow: var(--shadow);
+  z-index: 100;
+  overflow: hidden;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.tag-suggestion {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.tag-suggestion:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 /* ---- Tag filter bar ---- */

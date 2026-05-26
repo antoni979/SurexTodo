@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import {
@@ -44,6 +44,8 @@ export default function TaskDetail({
   const [note, setNote] = useState(task.note ?? "");
   const [converting, setConverting] = useState(false);
   const [tagInput, setTagInput] = useState("");
+  const [tagFocused, setTagFocused] = useState(false);
+  const allTags = useQuery(api.tasks.listAllTags) ?? [];
 
   function saveTitle() {
     const t = title.trim();
@@ -222,30 +224,33 @@ export default function TaskDetail({
 
         <div className="detail-field">
           <label>Etiquetas</label>
-          <div className="tag-editor">
-            <div className="tag-chips">
-              {(task.tags ?? []).map((tag) => (
-                <span key={tag} className="tag-chip">
-                  {tag}
-                  <button
-                    type="button"
-                    className="tag-chip-remove"
-                    onClick={() =>
-                      void updateTask({
-                        taskId: task._id,
-                        tags: (task.tags ?? []).filter((t) => t !== tag),
-                      })
-                    }
-                  >×</button>
-                </span>
-              ))}
-            </div>
+          <div className="tag-chips">
+            {(task.tags ?? []).map((tag) => (
+              <span key={tag} className="tag-chip">
+                {tag}
+                <button
+                  type="button"
+                  className="tag-chip-remove"
+                  onClick={() =>
+                    void updateTask({
+                      taskId: task._id,
+                      tags: (task.tags ?? []).filter((t) => t !== tag),
+                    })
+                  }
+                >×</button>
+              </span>
+            ))}
+          </div>
+          <div className="tag-autocomplete">
             <input
               type="text"
               className="tag-input"
               value={tagInput}
               placeholder="Nueva etiqueta…"
+              autoComplete="off"
               onChange={(e) => setTagInput(e.target.value)}
+              onFocus={() => setTagFocused(true)}
+              onBlur={() => setTimeout(() => setTagFocused(false), 150)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === ",") {
                   e.preventDefault();
@@ -259,8 +264,33 @@ export default function TaskDetail({
                 }
               }}
             />
+            {tagFocused && (() => {
+              const current = task.tags ?? [];
+              const q = tagInput.trim().toLowerCase();
+              const suggestions = allTags.filter(
+                (t) => !current.includes(t) && (q === "" || t.toLowerCase().includes(q)),
+              );
+              return suggestions.length > 0 ? (
+                <div className="tag-suggestions">
+                  {suggestions.map((sug) => (
+                    <button
+                      key={sug}
+                      type="button"
+                      className="tag-suggestion"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        void updateTask({ taskId: task._id, tags: [...current, sug] });
+                        setTagInput("");
+                      }}
+                    >
+                      {sug}
+                    </button>
+                  ))}
+                </div>
+              ) : null;
+            })()}
           </div>
-          <small className="field-hint">Enter o coma para añadir</small>
+          <small className="field-hint">Enter o coma para crear · o elige una existente</small>
         </div>
 
         <SubtaskList parentId={task._id} today={today} />
