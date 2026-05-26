@@ -1187,6 +1187,7 @@ input[type="date"]:hover::-webkit-calendar-picker-indicator {
   display: inline-flex;
   align-items: center;
   gap: 2px;
+  flex-shrink: 0;
 }
 .date-chip {
   display: inline-flex;
@@ -1416,7 +1417,7 @@ input[type="date"]:hover::-webkit-calendar-picker-indicator {
 }
 .subtask-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   padding: 7px 10px;
   border-radius: 8px;
@@ -1437,17 +1438,20 @@ input[type="date"]:hover::-webkit-calendar-picker-indicator {
   width: 17px;
   height: 17px;
   border-width: 2px;
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 .subtask-title {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.4;
 }
 .subtask-del {
   padding: 3px;
   flex-shrink: 0;
+  margin-top: 1px;
 }
 .subtask-add {
   display: flex;
@@ -1483,13 +1487,6 @@ input[type="date"]:hover::-webkit-calendar-picker-indicator {
   padding: 4px 2px;
   background: transparent;
   font-size: 13.5px;
-}
-.subtask-title {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .convert-action {
   border-color: #d6bcfa;
