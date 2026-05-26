@@ -168,16 +168,12 @@ async function enrich(
   };
 }
 
-// Top-level filter: hide subtasks (anything with a non-project parent)
-// from the main lists. Project root tasks (isProject=true) are also
-// hidden — they live in the Proyectos section.
-async function isTopLevel(ctx: QueryCtx, task: Doc<"tasks">) {
+// Top-level filter: only tasks with no parent and that are not projects
+// appear in the main lists. Project tasks stay inside their project.
+function isTopLevel(_ctx: QueryCtx, task: Doc<"tasks">) {
   if (task.isProject) return false;
-  if (!task.parentTaskId) return true;
-  const parent = await ctx.db.get(task.parentTaskId);
-  // If parent is a project, this task is a "project task" and we still
-  // want it to show in the main lists (it's a real working task).
-  return !!parent?.isProject;
+  if (task.parentTaskId) return false;
+  return true;
 }
 
 /* ---------- queries ---------- */
@@ -222,7 +218,7 @@ export const listPersonal = query({
     for (const t of all) {
       if (t.teamId) continue;
       if ((t.workspaceId ?? null) !== filterWS) continue;
-      if (await isTopLevel(ctx, t)) personal.push(t);
+      if (isTopLevel(ctx, t)) personal.push(t);
     }
     const myDaySet = await myDayTaskIds(ctx, userId, today);
     return Promise.all(personal.map((t) => enrich(ctx, t, myDaySet)));
@@ -242,7 +238,7 @@ export const listTeamTasks = query({
       .collect();
     const filtered = [];
     for (const t of tasks) {
-      if (await isTopLevel(ctx, t)) filtered.push(t);
+      if (isTopLevel(ctx, t)) filtered.push(t);
     }
     const myDaySet = await myDayTaskIds(ctx, userId, today);
     return Promise.all(filtered.map((t) => enrich(ctx, t, myDaySet)));
@@ -341,7 +337,7 @@ export const listPlanned = query({
       if (t.teamId) continue;
       if (!t.dueDate) continue;
       if ((t.workspaceId ?? null) !== filterWS) continue;
-      if (await isTopLevel(ctx, t)) personalWithDue.push(t);
+      if (isTopLevel(ctx, t)) personalWithDue.push(t);
     }
 
     const assigned = await ctx.db
@@ -354,7 +350,7 @@ export const listPlanned = query({
       if (!t.dueDate) continue;
       const team = await ctx.db.get(t.teamId);
       if ((team?.workspaceId ?? null) !== filterWS) continue;
-      if (await isTopLevel(ctx, t)) teamWithDue.push(t);
+      if (isTopLevel(ctx, t)) teamWithDue.push(t);
     }
 
     const combined = [...personalWithDue, ...teamWithDue];
