@@ -43,6 +43,7 @@ export default function TaskDetail({
   const [title, setTitle] = useState(task.title);
   const [note, setNote] = useState(task.note ?? "");
   const [converting, setConverting] = useState(false);
+  const [tagInput, setTagInput] = useState("");
 
   function saveTitle() {
     const t = title.trim();
@@ -217,6 +218,49 @@ export default function TaskDetail({
                 });
             }}
           />
+        </div>
+
+        <div className="detail-field">
+          <label>Etiquetas</label>
+          <div className="tag-editor">
+            <div className="tag-chips">
+              {(task.tags ?? []).map((tag) => (
+                <span key={tag} className="tag-chip">
+                  {tag}
+                  <button
+                    type="button"
+                    className="tag-chip-remove"
+                    onClick={() =>
+                      void updateTask({
+                        taskId: task._id,
+                        tags: (task.tags ?? []).filter((t) => t !== tag),
+                      })
+                    }
+                  >×</button>
+                </span>
+              ))}
+            </div>
+            <input
+              type="text"
+              className="tag-input"
+              value={tagInput}
+              placeholder="Nueva etiqueta…"
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === ",") {
+                  e.preventDefault();
+                  const val = tagInput.trim().replace(/,/g, "");
+                  if (!val) return;
+                  const current = task.tags ?? [];
+                  if (!current.includes(val)) {
+                    void updateTask({ taskId: task._id, tags: [...current, val] });
+                  }
+                  setTagInput("");
+                }
+              }}
+            />
+          </div>
+          <small className="field-hint">Enter o coma para añadir</small>
         </div>
 
         <SubtaskList parentId={task._id} today={today} />

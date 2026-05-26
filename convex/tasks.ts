@@ -259,6 +259,41 @@ export const listMyDay = query({
       }
       tasks.push(await enrich(ctx, task, myDaySet));
     }
+
+    // Also include personal tasks due today not yet in myDay
+    const createdByMe = await ctx.db
+      .query("tasks")
+      .withIndex("by_creator", (q) => q.eq("creatorId", userId))
+      .collect();
+    for (const t of createdByMe) {
+      if (myDaySet.has(t._id)) continue;
+      if (t.dueDate !== today) continue;
+      if (t.completed) continue;
+      if (t.isProject) continue;
+      if (t.teamId) continue;
+      if ((t.workspaceId ?? null) !== filterWS) continue;
+      if (t.parentTaskId) {
+        const parent = await ctx.db.get(t.parentTaskId);
+        if (parent && !parent.isProject) continue;
+      }
+      tasks.push(await enrich(ctx, t, myDaySet));
+    }
+
+    // Also include team tasks assigned to me due today not yet in myDay
+    const assignedToMe = await ctx.db
+      .query("tasks")
+      .withIndex("by_assignee", (q) => q.eq("assigneeId", userId))
+      .collect();
+    for (const t of assignedToMe) {
+      if (myDaySet.has(t._id)) continue;
+      if (t.dueDate !== today) continue;
+      if (t.completed) continue;
+      if (!t.teamId) continue;
+      const team = await ctx.db.get(t.teamId);
+      if ((team?.workspaceId ?? null) !== filterWS) continue;
+      tasks.push(await enrich(ctx, t, myDaySet));
+    }
+
     return tasks;
   },
 });
@@ -428,6 +463,7 @@ export const updateTask = mutation({
     assigneeId: v.optional(v.union(v.id("users"), v.null())),
     note: v.optional(v.union(v.string(), v.null())),
     recurrence: v.optional(v.union(recurrenceValidator, v.null())),
+    tags: v.optional(v.union(v.array(v.string()), v.null())),
   },
   handler: async (ctx, args) => {
     const userId = await requireUser(ctx);
@@ -442,6 +478,7 @@ export const updateTask = mutation({
       note?: string;
       assigneeId?: Id<"users">;
       recurrence?: Recurrence;
+      tags?: string[];
     } = {};
 
     if (args.title !== undefined) {
@@ -453,6 +490,9 @@ export const updateTask = mutation({
     if (args.note !== undefined) patch.note = args.note ?? undefined;
     if (args.recurrence !== undefined) {
       patch.recurrence = args.recurrence ?? undefined;
+    }
+    if (args.tags !== undefined) {
+      patch.tags = args.tags ?? undefined;
     }
     if (args.assigneeId !== undefined) {
       const teamId = task.teamId;

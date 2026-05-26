@@ -73,6 +73,9 @@ export default function TaskRow({
           {task.assigneeName && (
             <span className="chip">Asignada a {task.assigneeName}</span>
           )}
+          {(task.tags ?? []).map((tag) => (
+            <span key={tag} className="chip tag">{tag}</span>
+          ))}
         </div>
       </div>
 

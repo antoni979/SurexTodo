@@ -38,6 +38,7 @@ export default function ProjectView({
 
   const [tab, setTab] = useState<"board" | "list">("board");
   const [search, setSearch] = useState("");
+  const [showDone, setShowDone] = useState(() => localStorage.getItem("showDone") !== "false");
 
   if (project === undefined) {
     return (
@@ -77,6 +78,18 @@ export default function ProjectView({
           Lista
         </button>
         <div className="project-tabs-spacer" />
+        {project.tasks.some((t) => t.completed) && (
+          <button
+            className={"toggle-done-btn" + (showDone ? " active" : "")}
+            onClick={() => {
+              const next = !showDone;
+              setShowDone(next);
+              localStorage.setItem("showDone", String(next));
+            }}
+          >
+            {showDone ? "Ocultar completadas" : "Mostrar completadas"}
+          </button>
+        )}
         <div className="search-input search-input-compact">
           <SearchIcon size={14} />
           <input
@@ -90,9 +103,9 @@ export default function ProjectView({
       <div className="screen-scroll project-scroll">
         <ProjectMetaPanel project={project} />
         {tab === "board" ? (
-          <KanbanBoard project={project} today={today} search={search} />
+          <KanbanBoard project={project} today={today} search={search} showDone={showDone} />
         ) : (
-          <TaskListPanel project={project} today={today} search={search} />
+          <TaskListPanel project={project} today={today} search={search} showDone={showDone} />
         )}
         <MilestonesPanel project={project} />
         <LinksPanel project={project} />
@@ -365,10 +378,12 @@ function KanbanBoard({
   project,
   today,
   search,
+  showDone,
 }: {
   project: ProjectDetail;
   today: string;
   search: string;
+  showDone: boolean;
 }) {
   const moveTask = useMutation(api.tasks.moveTaskInKanban);
   const createTask = useMutation(api.tasks.createTask);
@@ -386,6 +401,7 @@ function KanbanBoard({
     done: [],
   };
   for (const t of project.tasks) {
+    if (!showDone && t.completed) continue;
     if (q && !t.title.toLowerCase().includes(q)) continue;
     const col = (t.kanbanStatus as KanbanStatus) ?? "todo";
     byCol[col].push(t);
@@ -706,17 +722,21 @@ function TaskListPanel({
   project,
   today,
   search,
+  showDone,
 }: {
   project: ProjectDetail;
   today: string;
   search: string;
+  showDone: boolean;
 }) {
   const toggle = useMutation(api.tasks.toggleComplete);
   const deleteTask = useMutation(api.tasks.deleteTask);
   const q = search.trim().toLowerCase();
-  const filtered = q
-    ? project.tasks.filter((t) => t.title.toLowerCase().includes(q))
-    : project.tasks;
+  const filtered = project.tasks.filter((t) => {
+    if (!showDone && t.completed) return false;
+    if (q && !t.title.toLowerCase().includes(q)) return false;
+    return true;
+  });
   return (
     <section className="task-group project-list">
       <div className="group-label">

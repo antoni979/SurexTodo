@@ -38,20 +38,25 @@ export default function TaskScreen({
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [showDone, setShowDone] = useState(() => {
-    return localStorage.getItem("showDone") !== "false";
-  });
+  const [showDone, setShowDone] = useState(() => localStorage.getItem("showDone") !== "false");
+  const [activeTag, setActiveTag] = useState<string | null>(null);
 
   const q = search.trim().toLowerCase();
-  const filteredGroups = groups
-    .map((g) => ({
-      ...g,
-      tasks: g.tasks.filter((t) => {
-        if (!showDone && t.completed) return false;
-        if (q) return t.title.toLowerCase().includes(q) || (t.note ?? "").toLowerCase().includes(q);
-        return true;
-      }),
-    }));
+
+  // Collect all unique tags across all groups
+  const allTags = Array.from(
+    new Set(groups.flatMap((g) => g.tasks).flatMap((t) => t.tags ?? []))
+  ).sort();
+
+  const filteredGroups = groups.map((g) => ({
+    ...g,
+    tasks: g.tasks.filter((t) => {
+      if (!showDone && t.completed) return false;
+      if (activeTag && !(t.tags ?? []).includes(activeTag)) return false;
+      if (q) return t.title.toLowerCase().includes(q) || (t.note ?? "").toLowerCase().includes(q);
+      return true;
+    }),
+  }));
 
   const doneCount = groups.flatMap((g) => g.tasks).filter((t) => t.completed).length;
 
@@ -90,6 +95,23 @@ export default function TaskScreen({
               </button>
             )}
           </div>
+          {allTags.length > 0 && (
+            <div className="tag-filter">
+              <button
+                className={"filter-chip" + (activeTag === null ? " active" : "")}
+                onClick={() => setActiveTag(null)}
+              >Todas</button>
+              {allTags.map((tag) => (
+                <button
+                  key={tag}
+                  className={"filter-chip" + (activeTag === tag ? " active" : "")}
+                  onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          )}
         </header>
 
         <div className="screen-scroll">
