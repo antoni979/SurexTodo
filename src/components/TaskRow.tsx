@@ -49,19 +49,25 @@ export default function TaskRow({
       </button>
 
       <div className="task-main">
-        <div className="task-title">{task.title}</div>
+        <div className="task-title">
+          {task.title}
+        </div>
         <div className="task-meta">
-          <span className="chip" style={{ color: prio.color }}>
-            <span className="dot" style={{ background: prio.color }} />
-            {prio.label}
-          </span>
+          {task.isProject ? (
+            <span className="chip review-chip">📋 Revisión</span>
+          ) : (
+            <span className="chip" style={{ color: prio.color }}>
+              <span className="dot" style={{ background: prio.color }} />
+              {prio.label}
+            </span>
+          )}
           {due && (
             <span className={"chip" + (due.overdue ? " overdue" : "")}>
               {due.overdue ? "Venció: " : ""}
               {due.label}
             </span>
           )}
-          {task.recurrence && (
+          {!task.isProject && task.recurrence && (
             <span className="chip recur">
               <RepeatIcon size={11} />
               {recurrenceLabel(task.recurrence)}
@@ -79,20 +85,22 @@ export default function TaskRow({
         </div>
       </div>
 
-      <button
-        className={"sun-btn" + (task.inMyDay ? " on" : "")}
-        title={task.inMyDay ? "Quitar de Mi día" : "Añadir a Mi día"}
-        onClick={(e) => {
-          e.stopPropagation();
-          void setMyDay({
-            taskId: task._id,
-            today,
-            inMyDay: !task.inMyDay,
-          });
-        }}
-      >
-        <SunIcon size={17} />
-      </button>
+      {!task.isProject && (
+        <button
+          className={"sun-btn" + (task.inMyDay ? " on" : "")}
+          title={task.inMyDay ? "Quitar de Mi día" : "Añadir a Mi día"}
+          onClick={(e) => {
+            e.stopPropagation();
+            void setMyDay({
+              taskId: task._id,
+              today,
+              inMyDay: !task.inMyDay,
+            });
+          }}
+        >
+          <SunIcon size={17} />
+        </button>
+      )}
     </div>
   );
 }

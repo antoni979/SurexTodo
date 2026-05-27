@@ -655,10 +655,24 @@ input[type="date"]:hover::-webkit-calendar-picker-indicator {
   font-size: 13px;
   color: var(--text);
 }
+.composer-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 6px;
+  min-height: 28px;
+}
 .composer-error {
   color: var(--danger);
   font-size: 13px;
   padding: 6px;
+}
+.chip.review-chip {
+  background: #f0f4ff;
+  color: #4f46e5;
+  border: 1px solid #c7d2fe;
+  font-weight: 500;
 }
 
 /* ---------- task groups + rows ---------- */

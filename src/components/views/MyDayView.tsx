@@ -49,6 +49,7 @@ export default function MyDayView({
               priority: d.priority,
               dueDate: d.dueDate,
               recurrence: d.recurrence,
+              tags: d.tags,
               addToMyDay: true,
               today,
               ...(workspaceId ? { workspaceId } : {}),

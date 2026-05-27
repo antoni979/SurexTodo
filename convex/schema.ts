@@ -94,6 +94,7 @@ export default defineSchema({
     description: v.optional(v.string()),
     startDate: v.optional(v.string()),
     endDate: v.optional(v.string()),
+    reviewDate: v.optional(v.string()),
     projectStatus: v.optional(projectStatusValidator),
     leadId: v.optional(v.id("users")),
     tags: v.optional(v.array(v.string())),

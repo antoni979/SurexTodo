@@ -200,6 +200,7 @@ export default function TeamView({
               priority: d.priority,
               dueDate: d.dueDate,
               recurrence: d.recurrence,
+              tags: d.tags,
               teamId,
               assigneeId: d.assigneeId,
             }).then(() => undefined)

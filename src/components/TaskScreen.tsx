@@ -145,7 +145,13 @@ export default function TaskScreen({
                       today={today}
                       selected={task._id === selectedId}
                       showTeam={showTeamChip}
-                      onSelect={() => setSelectedId(task._id)}
+                      onSelect={() => {
+                        if (task.isProject && onOpenProject) {
+                          onOpenProject(task._id);
+                        } else {
+                          setSelectedId(task._id);
+                        }
+                      }}
                     />
                   ))}
                 </section>

@@ -278,14 +278,14 @@ export const listMyDay = query({
       tasks.push(await enrich(ctx, task, myDaySet));
     }
 
-    // Also include personal tasks due today not yet in myDay
+    // Also include personal tasks due today or overdue (not yet in myDay)
     const createdByMe = await ctx.db
       .query("tasks")
       .withIndex("by_creator", (q) => q.eq("creatorId", userId))
       .collect();
     for (const t of createdByMe) {
       if (myDaySet.has(t._id)) continue;
-      if (t.dueDate !== today) continue;
+      if (!t.dueDate || t.dueDate > today) continue;
       if (t.completed) continue;
       if (t.isProject) continue;
       if (t.teamId) continue;
@@ -297,19 +297,28 @@ export const listMyDay = query({
       tasks.push(await enrich(ctx, t, myDaySet));
     }
 
-    // Also include team tasks assigned to me due today not yet in myDay
+    // Also include team tasks assigned to me due today or overdue (not yet in myDay)
     const assignedToMe = await ctx.db
       .query("tasks")
       .withIndex("by_assignee", (q) => q.eq("assigneeId", userId))
       .collect();
     for (const t of assignedToMe) {
       if (myDaySet.has(t._id)) continue;
-      if (t.dueDate !== today) continue;
+      if (!t.dueDate || t.dueDate > today) continue;
       if (t.completed) continue;
       if (!t.teamId) continue;
       const team = await ctx.db.get(t.teamId);
       if ((team?.workspaceId ?? null) !== filterWS) continue;
       tasks.push(await enrich(ctx, t, myDaySet));
+    }
+
+    // Include projects with a reviewDate due today or overdue
+    for (const p of createdByMe) {
+      if (!p.isProject) continue;
+      if (!p.reviewDate || p.reviewDate > today) continue;
+      if ((p.workspaceId ?? null) !== filterWS) continue;
+      if (tasks.some((t) => t._id === p._id)) continue;
+      tasks.push(await enrich(ctx, { ...p, dueDate: p.reviewDate } as Doc<"tasks">, myDaySet));
     }
 
     return tasks;
@@ -353,7 +362,16 @@ export const listPlanned = query({
       if (isTopLevel(ctx, t)) teamWithDue.push(t);
     }
 
-    const combined = [...personalWithDue, ...teamWithDue];
+    // Projects with a reviewDate (shown as "pending review" in Planeado)
+    const projectReviews: Doc<"tasks">[] = [];
+    for (const t of created) {
+      if (!t.isProject) continue;
+      if (!t.reviewDate) continue;
+      if ((t.workspaceId ?? null) !== filterWS) continue;
+      projectReviews.push({ ...t, dueDate: t.reviewDate } as Doc<"tasks">);
+    }
+
+    const combined = [...personalWithDue, ...teamWithDue, ...projectReviews];
     const myDaySet = await myDayTaskIds(ctx, userId, today);
     return Promise.all(combined.map((t) => enrich(ctx, t, myDaySet)));
   },
@@ -397,6 +415,7 @@ export const createTask = mutation({
     today: v.optional(v.string()),
     parentTaskId: v.optional(v.id("tasks")),
     workspaceId: v.optional(v.id("workspaces")),
+    tags: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const userId = await requireUser(ctx);
@@ -425,6 +444,10 @@ export const createTask = mutation({
       assigneeId = undefined;
     }
 
+    const cleanTags = (args.tags ?? [])
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
+
     const taskId = await ctx.db.insert("tasks", {
       title,
       priority: args.priority,
@@ -437,6 +460,7 @@ export const createTask = mutation({
       parentTaskId: args.parentTaskId,
       kanbanStatus: args.parentTaskId ? "todo" : undefined,
       workspaceId: args.workspaceId,
+      tags: cleanTags.length > 0 ? cleanTags : undefined,
     });
 
     if (args.addToMyDay && args.today) {

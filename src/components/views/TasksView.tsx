@@ -53,6 +53,7 @@ export default function TasksView({
               priority: d.priority,
               dueDate: d.dueDate,
               recurrence: d.recurrence,
+              tags: d.tags,
               ...(workspaceId ? { workspaceId } : {}),
             }).then(() => undefined)
           }

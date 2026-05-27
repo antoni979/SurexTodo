@@ -89,6 +89,7 @@ export default function PlannedView({
               priority: d.priority,
               dueDate: d.dueDate,
               recurrence: d.recurrence,
+              tags: d.tags,
               ...(workspaceId ? { workspaceId } : {}),
             }).then(() => undefined)
           }

@@ -305,6 +305,22 @@ function ProjectMetaPanel({ project }: { project: ProjectDetail }) {
               }
             />
           </div>
+          <div className="detail-field">
+            <label>Fecha de revisión</label>
+            <input
+              type="date"
+              value={project.reviewDate ?? ""}
+              onChange={(e) =>
+                void updateProject({
+                  projectId: project._id,
+                  reviewDate: e.target.value || null,
+                })
+              }
+            />
+            <small className="field-hint">
+              Aparecerá en Planeado y Mi día cuando llegue la fecha.
+            </small>
+          </div>
           {project.teamId && (
             <div className="detail-field">
               <label>Responsable</label>

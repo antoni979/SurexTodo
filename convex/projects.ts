@@ -218,6 +218,7 @@ export const getProject = query({
       description: p.description ?? "",
       startDate: p.startDate ?? null,
       endDate: p.endDate ?? null,
+      reviewDate: p.reviewDate ?? null,
       projectStatus: p.projectStatus ?? "not_started",
       leadId: p.leadId ?? null,
       leadName: await nameOf(ctx, p.leadId),
@@ -297,6 +298,7 @@ export const convertFromProject = mutation({
       projectStatus: undefined,
       startDate: undefined,
       endDate: undefined,
+      reviewDate: undefined,
       description: undefined,
       leadId: undefined,
       tags: undefined,
@@ -313,6 +315,7 @@ export const updateProject = mutation({
     description: v.optional(v.union(v.string(), v.null())),
     startDate: v.optional(v.union(v.string(), v.null())),
     endDate: v.optional(v.union(v.string(), v.null())),
+    reviewDate: v.optional(v.union(v.string(), v.null())),
     projectStatus: v.optional(projectStatusValidator),
     leadId: v.optional(v.union(v.id("users"), v.null())),
     tags: v.optional(v.array(v.string())),
@@ -325,6 +328,7 @@ export const updateProject = mutation({
       description?: string;
       startDate?: string;
       endDate?: string;
+      reviewDate?: string;
       projectStatus?:
         | "not_started"
         | "in_progress"
@@ -343,6 +347,9 @@ export const updateProject = mutation({
     }
     if (args.endDate !== undefined) {
       patch.endDate = args.endDate ?? undefined;
+    }
+    if (args.reviewDate !== undefined) {
+      patch.reviewDate = args.reviewDate ?? undefined;
     }
     if (args.projectStatus !== undefined) {
       patch.projectStatus = args.projectStatus;
