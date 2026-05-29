@@ -12,6 +12,7 @@ import {
   PlusIcon,
   LogoutIcon,
   FolderIcon,
+  BellIcon,
 } from "./icons";
 import { PROJECT_STATUS_META } from "../util";
 import NewTeamModal from "./NewTeamModal";
@@ -23,6 +24,8 @@ export default function Sidebar({
   open,
   workspaceId,
   onWorkspaceChange,
+  notifPermission,
+  onEnableNotifications,
 }: {
   username: string;
   view: View;
@@ -30,6 +33,8 @@ export default function Sidebar({
   open: boolean;
   workspaceId: Id<"workspaces"> | null;
   onWorkspaceChange: (id: Id<"workspaces"> | null) => void;
+  notifPermission: NotificationPermission;
+  onEnableNotifications: () => void;
 }) {
   const workspaces = useQuery(api.workspaces.listMyWorkspaces) ?? [];
   const createWorkspace = useMutation(api.workspaces.createWorkspace);
@@ -218,6 +223,26 @@ export default function Sidebar({
           <div className="avatar">{username.charAt(0).toUpperCase()}</div>
           <span className="username">{username}</span>
         </div>
+        {"Notification" in window && (
+          <button
+            className={
+              "icon-btn notif-btn" +
+              (notifPermission === "granted" ? " notif-on" : "") +
+              (notifPermission === "denied" ? " notif-off" : "")
+            }
+            title={
+              notifPermission === "granted"
+                ? "Notificaciones activas · pulsa para probar"
+                : notifPermission === "denied"
+                ? "Notificaciones bloqueadas en el navegador"
+                : "Activar notificaciones de escritorio"
+            }
+            onClick={onEnableNotifications}
+            disabled={notifPermission === "denied"}
+          >
+            <BellIcon size={18} />
+          </button>
+        )}
         <button
           className="icon-btn"
           title="Cerrar sesión"

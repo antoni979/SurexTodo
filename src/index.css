@@ -173,6 +173,28 @@ input[type="date"]:hover::-webkit-calendar-picker-indicator {
   background: #ececec;
   color: var(--text);
 }
+.notif-btn {
+  position: relative;
+}
+.notif-btn.notif-on {
+  color: #2563eb;
+}
+.notif-btn.notif-off {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+/* Dot indicator when notifications not yet enabled */
+.notif-btn:not(.notif-on):not(.notif-off)::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f59e0b;
+  border: 1px solid var(--sidebar-bg, #f8f8f8);
+}
 
 /* ---------- auth / splash ---------- */
 
