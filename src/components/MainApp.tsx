@@ -3,6 +3,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { localToday } from "../util";
+import { useTaskNotifications } from "../hooks/useTaskNotifications";
 import Sidebar from "./Sidebar";
 import MyDayView from "./views/MyDayView";
 import PlannedView from "./views/PlannedView";
@@ -62,6 +63,9 @@ export default function MainApp({
     scheduleUpdate();
     return () => clearTimeout(timeout);
   }, []);
+
+  // Fire a browser notification once per day for overdue / due-today tasks
+  useTaskNotifications({ today, workspaceId });
 
   function selectView(v: View) {
     setView(v);
