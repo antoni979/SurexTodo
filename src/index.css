@@ -180,8 +180,8 @@ input[type="date"]:hover::-webkit-calendar-picker-indicator {
   color: #2563eb;
 }
 .notif-btn.notif-off {
-  opacity: 0.35;
-  cursor: not-allowed;
+  opacity: 0.55;
+  cursor: pointer;
 }
 /* Dot indicator when notifications not yet enabled */
 .notif-btn:not(.notif-on):not(.notif-off)::after {
@@ -194,6 +194,53 @@ input[type="date"]:hover::-webkit-calendar-picker-indicator {
   border-radius: 50%;
   background: #f59e0b;
   border: 1px solid var(--sidebar-bg, #f8f8f8);
+}
+.notif-wrap {
+  position: relative;
+}
+.notif-help {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  width: 260px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px 10px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.12);
+  font-size: 13px;
+  color: var(--text);
+  z-index: 200;
+}
+.notif-help strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13.5px;
+}
+.notif-help p {
+  margin: 0 0 8px;
+  line-height: 1.5;
+  color: var(--text-soft);
+}
+.notif-help ol {
+  margin: 0 0 10px;
+  padding-left: 18px;
+  color: var(--text-soft);
+  line-height: 1.7;
+}
+.notif-help-close {
+  display: block;
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--text-soft);
+}
+.notif-help-close:hover {
+  background: #f3f4f6;
 }
 
 /* ---------- auth / splash ---------- */

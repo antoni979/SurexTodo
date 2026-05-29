@@ -45,6 +45,7 @@ export default function Sidebar({
   const [showNewWorkspace, setShowNewWorkspace] = useState(false);
   const [newWsName, setNewWsName] = useState("");
   const [wsError, setWsError] = useState<string | null>(null);
+  const [showNotifHelp, setShowNotifHelp] = useState(false);
 
   async function handleCreateWorkspace(e: React.FormEvent) {
     e.preventDefault();
@@ -224,24 +225,67 @@ export default function Sidebar({
           <span className="username">{username}</span>
         </div>
         {"Notification" in window && (
-          <button
-            className={
-              "icon-btn notif-btn" +
-              (notifPermission === "granted" ? " notif-on" : "") +
-              (notifPermission === "denied" ? " notif-off" : "")
-            }
-            title={
-              notifPermission === "granted"
-                ? "Notificaciones activas · pulsa para probar"
-                : notifPermission === "denied"
-                ? "Notificaciones bloqueadas en el navegador"
-                : "Activar notificaciones de escritorio"
-            }
-            onClick={onEnableNotifications}
-            disabled={notifPermission === "denied"}
-          >
-            <BellIcon size={18} />
-          </button>
+          <div className="notif-wrap">
+            <button
+              className={
+                "icon-btn notif-btn" +
+                (notifPermission === "granted" ? " notif-on" : "") +
+                (notifPermission === "denied" ? " notif-off" : "")
+              }
+              title={
+                notifPermission === "granted"
+                  ? "Notificaciones activas · pulsa para probar"
+                  : notifPermission === "denied"
+                  ? "Bloqueadas — pulsa para ver cómo desbloquear"
+                  : "Activar notificaciones de escritorio"
+              }
+              onClick={() => {
+                if (notifPermission === "denied") {
+                  setShowNotifHelp((v) => !v);
+                } else {
+                  void onEnableNotifications();
+                  if (notifPermission === "default") setShowNotifHelp(true);
+                }
+              }}
+            >
+              <BellIcon size={18} />
+            </button>
+            {showNotifHelp && (
+              <div className="notif-help">
+                {notifPermission === "denied" ? (
+                  <>
+                    <strong>Notificaciones bloqueadas</strong>
+                    <p>
+                      Chrome las denegó automáticamente. Para activarlas:
+                    </p>
+                    <ol>
+                      <li>Haz clic en el 🔒 de la barra de dirección</li>
+                      <li>Abre <em>Configuración del sitio</em></li>
+                      <li>En <em>Notificaciones</em> elige <em>Permitir</em></li>
+                      <li>Recarga la página y vuelve a pulsar la campana</li>
+                    </ol>
+                  </>
+                ) : notifPermission === "default" ? (
+                  <>
+                    <strong>Acepta el permiso</strong>
+                    <p>
+                      Busca el cuadro de diálogo del navegador (puede aparecer
+                      en la barra de dirección como un icono 🔔) y pulsa
+                      <em> Permitir</em>.
+                    </p>
+                  </>
+                ) : (
+                  <p>¡Notificaciones activas! 🎉 Notificación de prueba enviada.</p>
+                )}
+                <button
+                  className="notif-help-close"
+                  onClick={() => setShowNotifHelp(false)}
+                >
+                  Cerrar
+                </button>
+              </div>
+            )}
+          </div>
         )}
         <button
           className="icon-btn"
