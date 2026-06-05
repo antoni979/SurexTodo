@@ -74,6 +74,14 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_team_user", ["teamId", "userId"]),
 
+  userTags: defineTable({
+    userId: v.id("users"),
+    name: v.string(),
+    workspaceId: v.optional(v.id("workspaces")),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_name", ["userId", "name"]),
+
   lists: defineTable({
     name: v.string(),
     color: v.optional(v.string()),       // hex, e.g. "#3b82f6"

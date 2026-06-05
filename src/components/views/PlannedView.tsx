@@ -78,6 +78,7 @@ export default function PlannedView({
       onOpenProject={onOpenProject}
       showTeamChip={true}
       loading={tasks === undefined}
+      workspaceId={workspaceId}
       emptyText="No tienes tareas con fecha de vencimiento. Las tareas de equipo asignadas a ti también aparecerán aquí."
       composer={
         <Composer

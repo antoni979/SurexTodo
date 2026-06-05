@@ -178,25 +178,60 @@ function isTopLevel(_ctx: QueryCtx, task: Doc<"tasks">) {
 
 /* ---------- queries ---------- */
 
-// All unique tags used in tasks this user has created or is assigned to.
+// All tags owned by this user. Stored in userTags table (persistent) plus
+// any tags still on tasks created by the user (backward compat).
+// Does NOT include tags from tasks merely assigned to this user.
 export const listAllTags = query({
   args: {},
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
+
+    // Explicit user tag store (persists even when removed from tasks)
+    const stored = await ctx.db
+      .query("userTags")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+
+    // Backward-compat: also surface tags on tasks the user created
     const created = await ctx.db
       .query("tasks")
       .withIndex("by_creator", (q) => q.eq("creatorId", userId))
       .collect();
-    const assigned = await ctx.db
-      .query("tasks")
-      .withIndex("by_assignee", (q) => q.eq("assigneeId", userId))
-      .collect();
-    const tagSet = new Set<string>();
-    for (const t of [...created, ...assigned]) {
+
+    const tagSet = new Set<string>(stored.map((t) => t.name));
+    for (const t of created) {
       for (const tag of t.tags ?? []) tagSet.add(tag);
     }
     return Array.from(tagSet).sort();
+  },
+});
+
+// Helper: upsert a tag into the user's personal tag library.
+async function ensureUserTag(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  name: string,
+  workspaceId?: Id<"workspaces">,
+) {
+  const existing = await ctx.db
+    .query("userTags")
+    .withIndex("by_user_name", (q) => q.eq("userId", userId).eq("name", name))
+    .unique();
+  if (!existing) {
+    await ctx.db.insert("userTags", { userId, name, workspaceId });
+  }
+}
+
+export const deleteUserTag = mutation({
+  args: { name: v.string() },
+  handler: async (ctx, { name }) => {
+    const userId = await requireUser(ctx);
+    const existing = await ctx.db
+      .query("userTags")
+      .withIndex("by_user_name", (q) => q.eq("userId", userId).eq("name", name))
+      .unique();
+    if (existing) await ctx.db.delete(existing._id);
   },
 });
 
@@ -488,6 +523,11 @@ export const createTask = mutation({
       listId: args.listId,
     });
 
+    // Persist new tags in the user's tag library
+    for (const tag of cleanTags) {
+      await ensureUserTag(ctx, userId, tag, args.workspaceId);
+    }
+
     if (args.addToMyDay && args.today) {
       await ctx.db.insert("myDay", { userId, taskId, date: args.today });
     }
@@ -561,7 +601,12 @@ export const updateTask = mutation({
       patch.recurrence = args.recurrence ?? undefined;
     }
     if (args.tags !== undefined) {
-      patch.tags = args.tags ?? undefined;
+      const newTags = args.tags ?? undefined;
+      patch.tags = newTags;
+      // Persist any new tags in the user's tag library
+      for (const tag of newTags ?? []) {
+        await ensureUserTag(ctx, userId, tag, task.workspaceId);
+      }
     }
     if (args.listId !== undefined) {
       patch.listId = args.listId ?? undefined;
@@ -621,6 +666,53 @@ export const toggleComplete = mutation({
         patch.kanbanStatus = completing ? "done" : "todo";
       }
       await ctx.db.patch(taskId, patch);
+    }
+  },
+});
+
+export const bulkUpdate = mutation({
+  args: {
+    taskIds: v.array(v.id("tasks")),
+    priority: v.optional(priorityValidator),
+    dueDate: v.optional(v.union(v.string(), v.null())),
+    addTags: v.optional(v.array(v.string())),
+    listId: v.optional(v.union(v.id("lists"), v.null())),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireUser(ctx);
+    for (const taskId of args.taskIds) {
+      const task = await ctx.db.get(taskId);
+      if (!task) continue;
+      try { await assertAccess(ctx, task, userId); } catch { continue; }
+      const patch: {
+        priority?: "baja" | "media" | "alta" | "urgente";
+        dueDate?: string;
+        tags?: string[];
+        listId?: Id<"lists">;
+      } = {};
+      if (args.priority !== undefined) patch.priority = args.priority;
+      if (args.dueDate !== undefined) patch.dueDate = args.dueDate ?? undefined;
+      if (args.addTags && args.addTags.length > 0) {
+        patch.tags = [...new Set([...(task.tags ?? []), ...args.addTags])];
+        for (const tag of args.addTags) {
+          await ensureUserTag(ctx, userId, tag, task.workspaceId);
+        }
+      }
+      if (args.listId !== undefined) patch.listId = args.listId ?? undefined;
+      await ctx.db.patch(taskId, patch);
+    }
+  },
+});
+
+export const bulkDelete = mutation({
+  args: { taskIds: v.array(v.id("tasks")) },
+  handler: async (ctx, { taskIds }) => {
+    const userId = await requireUser(ctx);
+    for (const taskId of taskIds) {
+      const task = await ctx.db.get(taskId);
+      if (!task) continue;
+      try { await assertAccess(ctx, task, userId); } catch { continue; }
+      await cascadeDelete(ctx, taskId);
     }
   },
 });

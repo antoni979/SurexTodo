@@ -15,12 +15,18 @@ export default function TaskRow({
   selected,
   showTeam,
   onSelect,
+  selectMode = false,
+  isSelected = false,
+  onToggleSelect,
 }: {
   task: EnrichedTask;
   today: string;
   selected: boolean;
   showTeam: boolean;
   onSelect: () => void;
+  selectMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: () => void;
 }) {
   const toggleComplete = useMutation(api.tasks.toggleComplete);
   const setMyDay = useMutation(api.tasks.setMyDay);
@@ -30,28 +36,38 @@ export default function TaskRow({
 
   return (
     <div
-      className={
-        "task-row" +
-        (task.completed ? " done" : "") +
-        (selected ? " selected" : "")
-      }
+      className={[
+        "task-row",
+        task.completed ? "done" : "",
+        selected ? "selected" : "",
+        isSelected ? "bulk-selected" : "",
+      ].filter(Boolean).join(" ")}
       onClick={onSelect}
     >
-      <button
-        className={"check" + (task.completed ? " checked" : "")}
-        title={task.completed ? "Marcar como pendiente" : "Completar"}
-        onClick={(e) => {
-          e.stopPropagation();
-          void toggleComplete({ taskId: task._id, today });
-        }}
-      >
-        {task.completed && <CheckIcon size={13} />}
-      </button>
+      {/* Checkbox (select mode) or complete button */}
+      {selectMode ? (
+        <input
+          type="checkbox"
+          className="bulk-checkbox"
+          checked={isSelected}
+          onChange={(e) => { e.stopPropagation(); onToggleSelect?.(); }}
+          onClick={(e) => e.stopPropagation()}
+        />
+      ) : (
+        <button
+          className={"check" + (task.completed ? " checked" : "")}
+          title={task.completed ? "Marcar como pendiente" : "Completar"}
+          onClick={(e) => {
+            e.stopPropagation();
+            void toggleComplete({ taskId: task._id, today });
+          }}
+        >
+          {task.completed && <CheckIcon size={13} />}
+        </button>
+      )}
 
       <div className="task-main">
-        <div className="task-title">
-          {task.title}
-        </div>
+        <div className="task-title">{task.title}</div>
         <div className="task-meta">
           {task.isProject ? (
             <span className="chip review-chip">📋 Revisión</span>
@@ -85,17 +101,13 @@ export default function TaskRow({
         </div>
       </div>
 
-      {!task.isProject && (
+      {!task.isProject && !selectMode && (
         <button
           className={"sun-btn" + (task.inMyDay ? " on" : "")}
           title={task.inMyDay ? "Quitar de Mi día" : "Añadir a Mi día"}
           onClick={(e) => {
             e.stopPropagation();
-            void setMyDay({
-              taskId: task._id,
-              today,
-              inMyDay: !task.inMyDay,
-            });
+            void setMyDay({ taskId: task._id, today, inMyDay: !task.inMyDay });
           }}
         >
           <SunIcon size={17} />

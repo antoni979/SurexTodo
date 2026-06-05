@@ -161,6 +161,13 @@ export default function Sidebar({
           <ListIcon size={18} />
           <span>Tareas</span>
         </button>
+        <button
+          className={navClass(view.kind === "calendar")}
+          onClick={() => onSelect({ kind: "calendar" })}
+        >
+          <CalendarIcon size={18} />
+          <span>Calendario</span>
+        </button>
       </nav>
 
       {/* ── Listas ── */}

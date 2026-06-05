@@ -12,12 +12,14 @@ import TeamView from "./views/TeamView";
 import ProjectsView from "./views/ProjectsView";
 import ProjectView from "./views/ProjectView";
 import ListView from "./views/ListView";
+import CalendarView from "./views/CalendarView";
 import { MenuIcon } from "./icons";
 
 export type View =
   | { kind: "myday" }
   | { kind: "planned" }
   | { kind: "tasks" }
+  | { kind: "calendar" }
   | { kind: "team"; teamId: Id<"teams"> }
   | { kind: "projects" }
   | { kind: "project"; projectId: Id<"tasks"> }
@@ -138,6 +140,9 @@ export default function MainApp({
         {view.kind === "projects" && <ProjectsView onOpen={openProject} workspaceId={workspaceId} />}
         {view.kind === "project" && (
           <ProjectView key={view.projectId} projectId={view.projectId} today={today} />
+        )}
+        {view.kind === "calendar" && (
+          <CalendarView today={today} onOpenProject={openProject} workspaceId={workspaceId} />
         )}
         {view.kind === "list" && (
           <ListView

@@ -44,6 +44,7 @@ export default function TasksView({
       showTeamChip={false}
       loading={tasks === undefined}
       emptyText="No tienes tareas personales todavía. Añade la primera abajo."
+      workspaceId={workspaceId}
       composer={
         <Composer
           placeholder="Añadir una tarea"

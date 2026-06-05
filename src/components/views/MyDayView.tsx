@@ -39,6 +39,7 @@ export default function MyDayView({
       onOpenProject={onOpenProject}
       showTeamChip={true}
       loading={tasks === undefined}
+      workspaceId={workspaceId}
       emptyText="Aquí aparecerán las tareas que planees para hoy. Añade una abajo o pulsa el sol en cualquier tarea."
       composer={
         <Composer
