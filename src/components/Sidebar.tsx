@@ -15,6 +15,7 @@ import {
   BellIcon,
 } from "./icons";
 import { PROJECT_STATUS_META } from "../util";
+import { LIST_COLORS, DEFAULT_COLOR } from "../../convex/lists";
 import NewTeamModal from "./NewTeamModal";
 
 export default function Sidebar({
@@ -40,12 +41,18 @@ export default function Sidebar({
   const createWorkspace = useMutation(api.workspaces.createWorkspace);
   const teams = useQuery(api.teams.listMyTeams, workspaceId ? { workspaceId } : {}) ?? [];
   const projects = useQuery(api.projects.listMyProjects, workspaceId ? { workspaceId } : {}) ?? [];
+  const lists = useQuery(api.lists.listMyLists, workspaceId ? { workspaceId } : {}) ?? [];
+  const createList = useMutation(api.lists.createList);
   const { signOut } = useAuthActions();
   const [showNewTeam, setShowNewTeam] = useState(false);
   const [showNewWorkspace, setShowNewWorkspace] = useState(false);
   const [newWsName, setNewWsName] = useState("");
   const [wsError, setWsError] = useState<string | null>(null);
   const [showNotifHelp, setShowNotifHelp] = useState(false);
+  const [showNewList, setShowNewList] = useState(false);
+  const [newListName, setNewListName] = useState("");
+  const [newListColor, setNewListColor] = useState(DEFAULT_COLOR);
+  const [listError, setListError] = useState<string | null>(null);
 
   async function handleCreateWorkspace(e: React.FormEvent) {
     e.preventDefault();
@@ -57,6 +64,24 @@ export default function Sidebar({
       onWorkspaceChange(id);
     } catch (err) {
       setWsError(err instanceof Error ? err.message : "Error");
+    }
+  }
+
+  async function handleCreateList(e: React.FormEvent) {
+    e.preventDefault();
+    setListError(null);
+    try {
+      const id = await createList({
+        name: newListName,
+        color: newListColor,
+        ...(workspaceId ? { workspaceId } : {}),
+      });
+      setNewListName("");
+      setNewListColor(DEFAULT_COLOR);
+      setShowNewList(false);
+      onSelect({ kind: "list", listId: id as Id<"lists"> });
+    } catch (err) {
+      setListError(err instanceof Error ? err.message : "Error");
     }
   }
 
@@ -138,6 +163,64 @@ export default function Sidebar({
         </button>
       </nav>
 
+      {/* ── Listas ── */}
+      <div className="sidebar-section">
+        <div className="sidebar-section-title">
+          <ListIcon size={14} />
+          <span>Mis listas</span>
+          <button
+            className="sidebar-section-add"
+            onClick={() => setShowNewList((v) => !v)}
+            title="Nueva lista"
+          >
+            <PlusIcon size={12} />
+          </button>
+        </div>
+        {showNewList && (
+          <form className="ws-new-form list-new-form" onSubmit={handleCreateList}>
+            <input
+              type="text"
+              value={newListName}
+              onChange={(e) => setNewListName(e.target.value)}
+              placeholder="Nombre de la lista"
+              autoFocus
+            />
+            <div className="list-color-row">
+              {LIST_COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  className={"list-color-dot" + (c === newListColor ? " active" : "")}
+                  style={{ background: c }}
+                  onClick={() => setNewListColor(c)}
+                />
+              ))}
+            </div>
+            <button type="submit" className="btn-primary btn-sm" disabled={!newListName.trim()}>
+              Crear
+            </button>
+            {listError && <span className="composer-error">{listError}</span>}
+          </form>
+        )}
+        <div className="team-list">
+          {lists.map((l) => (
+            <button
+              key={l._id}
+              className={navClass(view.kind === "list" && view.listId === l._id)}
+              onClick={() => onSelect({ kind: "list", listId: l._id as Id<"lists"> })}
+              title={l.name}
+            >
+              <span className="list-dot" style={{ background: l.color }} />
+              <span className="nav-label">{l.name}</span>
+            </button>
+          ))}
+          {lists.length === 0 && !showNewList && (
+            <p className="sidebar-empty">Aún no tienes listas</p>
+          )}
+        </div>
+      </div>
+
+      {/* ── Proyectos ── */}
       <div className="sidebar-section">
         <div className="sidebar-section-title">
           <FolderIcon size={14} />

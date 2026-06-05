@@ -74,6 +74,15 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_team_user", ["teamId", "userId"]),
 
+  lists: defineTable({
+    name: v.string(),
+    color: v.optional(v.string()),       // hex, e.g. "#3b82f6"
+    ownerId: v.id("users"),
+    workspaceId: v.optional(v.id("workspaces")),
+  })
+    .index("by_owner", ["ownerId"])
+    .index("by_workspace_owner", ["workspaceId", "ownerId"]),
+
   tasks: defineTable({
     title: v.string(),
     priority: priorityValidator,
@@ -85,6 +94,9 @@ export default defineSchema({
     assigneeId: v.optional(v.id("users")),
     recurrence: v.optional(recurrenceValidator),
     workspaceId: v.optional(v.id("workspaces")),
+
+    // --- Lista personalizada (estilo Microsoft To-Do).
+    listId: v.optional(v.id("lists")),
 
     // --- Subtasks: parentTaskId points to the owning task or project.
     parentTaskId: v.optional(v.id("tasks")),
@@ -106,7 +118,8 @@ export default defineSchema({
     .index("by_creator", ["creatorId"])
     .index("by_team", ["teamId"])
     .index("by_assignee", ["assigneeId"])
-    .index("by_parent", ["parentTaskId"]),
+    .index("by_parent", ["parentTaskId"])
+    .index("by_list", ["listId"]),
 
   milestones: defineTable({
     projectId: v.id("tasks"),

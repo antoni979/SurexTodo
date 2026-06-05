@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState, type ReactNode, isValidElement } from "react";
 import type { Id } from "../../convex/_generated/dataModel";
 import type { EnrichedTask } from "../util";
 import TaskRow from "./TaskRow";
@@ -25,7 +25,7 @@ export default function TaskScreen({
 }: {
   title: string;
   accent: string;
-  subtitle?: string;
+  subtitle?: ReactNode;
   groups: TaskGroup[];
   composer?: ReactNode;
   beforeList?: ReactNode;
@@ -70,7 +70,11 @@ export default function TaskScreen({
       <div className="screen">
         <header className="screen-head" style={{ color: accent }}>
           <h1>{title}</h1>
-          {subtitle && <p className="screen-sub">{subtitle}</p>}
+          {subtitle && (
+            isValidElement(subtitle)
+              ? <div className="screen-sub screen-sub-controls">{subtitle}</div>
+              : <p className="screen-sub">{subtitle}</p>
+          )}
           <div className="screen-toolbar">
             <div className="search-input">
               <SearchIcon size={15} />

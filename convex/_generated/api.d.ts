@@ -12,6 +12,7 @@ import type * as adminOps from "../adminOps.js";
 import type * as attachments from "../attachments.js";
 import type * as auth from "../auth.js";
 import type * as http from "../http.js";
+import type * as lists from "../lists.js";
 import type * as profiles from "../profiles.js";
 import type * as projects from "../projects.js";
 import type * as seed from "../seed.js";
@@ -30,6 +31,7 @@ declare const fullApi: ApiFromModules<{
   attachments: typeof attachments;
   auth: typeof auth;
   http: typeof http;
+  lists: typeof lists;
   profiles: typeof profiles;
   projects: typeof projects;
   seed: typeof seed;

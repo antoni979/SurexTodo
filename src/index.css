@@ -510,6 +510,94 @@ input[type="date"]:hover::-webkit-calendar-picker-indicator {
   color: var(--text-soft);
   padding: 6px 12px;
 }
+.sidebar-section-add {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--text-soft);
+  padding: 2px 4px;
+  border-radius: 4px;
+  display: inline-flex;
+  cursor: pointer;
+}
+.sidebar-section-add:hover { background: #e5e7eb; color: var(--text); }
+.list-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.list-new-form {
+  flex-direction: column;
+  padding: 6px 12px;
+}
+.list-color-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 4px 0;
+}
+.list-color-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: transform .1s;
+}
+.list-color-dot:hover { transform: scale(1.15); }
+.list-color-dot.active { border-color: #111; transform: scale(1.15); }
+/* List view controls */
+.list-name-input {
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 8px;
+  background: #fff;
+}
+.list-name-btn {
+  background: none;
+  border: none;
+  font-size: 12px;
+  color: var(--text-soft);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.list-name-btn:hover { background: #f3f4f6; color: var(--text); }
+.list-color-btn {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+}
+.list-color-btn:hover { border-color: #111; }
+.list-color-picker {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  display: flex;
+  gap: 6px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.1);
+  z-index: 100;
+}
+.list-delete-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  opacity: 0.5;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+.list-delete-btn:hover { opacity: 1; background: #fee2e2; }
 .team-list {
   display: flex;
   flex-direction: column;
@@ -600,6 +688,12 @@ input[type="date"]:hover::-webkit-calendar-picker-indicator {
   margin: 6px 0 0;
   font-size: 13px;
   color: var(--text-soft);
+}
+.screen-sub-controls {
+  margin: 6px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-weight: 500;
 }
 .screen-toolbar {

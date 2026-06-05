@@ -11,6 +11,7 @@ import TasksView from "./views/TasksView";
 import TeamView from "./views/TeamView";
 import ProjectsView from "./views/ProjectsView";
 import ProjectView from "./views/ProjectView";
+import ListView from "./views/ListView";
 import { MenuIcon } from "./icons";
 
 export type View =
@@ -19,7 +20,8 @@ export type View =
   | { kind: "tasks" }
   | { kind: "team"; teamId: Id<"teams"> }
   | { kind: "projects" }
-  | { kind: "project"; projectId: Id<"tasks"> };
+  | { kind: "project"; projectId: Id<"tasks"> }
+  | { kind: "list"; listId: Id<"lists"> };
 
 export default function MainApp({
   username,
@@ -67,6 +69,15 @@ export default function MainApp({
   // Fire a browser notification once per day for overdue / due-today tasks
   const { permission: notifPermission, enableNotifications } =
     useTaskNotifications({ today, workspaceId });
+
+  // If we're viewing a list that no longer exists, go back to tasks
+  const lists = useQuery(api.lists.listMyLists, workspaceId ? { workspaceId } : {}) ?? [];
+  useEffect(() => {
+    if (view.kind === "list" && lists.length > 0) {
+      const exists = lists.some((l) => l._id === view.listId);
+      if (!exists) setView({ kind: "tasks" });
+    }
+  }, [lists, view]);
 
   function selectView(v: View) {
     setView(v);
@@ -127,6 +138,15 @@ export default function MainApp({
         {view.kind === "projects" && <ProjectsView onOpen={openProject} workspaceId={workspaceId} />}
         {view.kind === "project" && (
           <ProjectView key={view.projectId} projectId={view.projectId} today={today} />
+        )}
+        {view.kind === "list" && (
+          <ListView
+            key={view.listId}
+            listId={view.listId}
+            today={today}
+            onOpenProject={openProject}
+            workspaceId={workspaceId}
+          />
         )}
       </main>
     </div>

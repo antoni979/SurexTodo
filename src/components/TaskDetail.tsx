@@ -46,6 +46,7 @@ export default function TaskDetail({
   const [tagInput, setTagInput] = useState("");
   const [tagFocused, setTagFocused] = useState(false);
   const allTags = useQuery(api.tasks.listAllTags) ?? [];
+  const allLists = useQuery(api.lists.listMyLists, {}) ?? [];
 
   function saveTitle() {
     const t = title.trim();
@@ -202,6 +203,28 @@ export default function TaskDetail({
               Si la tarea tiene vencimiento, solo aparece en "Planeado" de la
               persona asignada.
             </small>
+          </div>
+        )}
+
+        {!task.parentTaskId && !task.teamId && (
+          <div className="detail-field">
+            <label>Lista</label>
+            <select
+              value={task.listId ?? ""}
+              onChange={(e) =>
+                void updateTask({
+                  taskId: task._id,
+                  listId: e.target.value ? (e.target.value as Id<"lists">) : null,
+                })
+              }
+            >
+              <option value="">Sin lista (Tareas)</option>
+              {allLists.map((l) => (
+                <option key={l._id} value={l._id}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
           </div>
         )}
 

@@ -217,11 +217,34 @@ export const listPersonal = query({
     const filterWS = workspaceId ?? null;
     for (const t of all) {
       if (t.teamId) continue;
+      if (t.listId) continue;                         // las listas tienen su propia vista
       if ((t.workspaceId ?? null) !== filterWS) continue;
       if (isTopLevel(ctx, t)) personal.push(t);
     }
     const myDaySet = await myDayTaskIds(ctx, userId, today);
     return Promise.all(personal.map((t) => enrich(ctx, t, myDaySet)));
+  },
+});
+
+// Tasks belonging to a specific list.
+export const listByList = query({
+  args: { listId: v.id("lists"), today: v.optional(v.string()) },
+  handler: async (ctx, { listId, today }) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return [];
+
+    // Verify the list belongs to this user
+    const list = await ctx.db.get(listId);
+    if (!list || list.ownerId !== userId) return [];
+
+    const tasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_list", (q) => q.eq("listId", listId))
+      .collect();
+
+    const myDaySet = await myDayTaskIds(ctx, userId, today);
+    const visible = tasks.filter((t) => isTopLevel(ctx, t));
+    return Promise.all(visible.map((t) => enrich(ctx, t, myDaySet)));
   },
 });
 
@@ -416,6 +439,7 @@ export const createTask = mutation({
     parentTaskId: v.optional(v.id("tasks")),
     workspaceId: v.optional(v.id("workspaces")),
     tags: v.optional(v.array(v.string())),
+    listId: v.optional(v.id("lists")),
   },
   handler: async (ctx, args) => {
     const userId = await requireUser(ctx);
@@ -461,6 +485,7 @@ export const createTask = mutation({
       kanbanStatus: args.parentTaskId ? "todo" : undefined,
       workspaceId: args.workspaceId,
       tags: cleanTags.length > 0 ? cleanTags : undefined,
+      listId: args.listId,
     });
 
     if (args.addToMyDay && args.today) {
@@ -506,6 +531,7 @@ export const updateTask = mutation({
     note: v.optional(v.union(v.string(), v.null())),
     recurrence: v.optional(v.union(recurrenceValidator, v.null())),
     tags: v.optional(v.union(v.array(v.string()), v.null())),
+    listId: v.optional(v.union(v.id("lists"), v.null())),
   },
   handler: async (ctx, args) => {
     const userId = await requireUser(ctx);
@@ -521,6 +547,7 @@ export const updateTask = mutation({
       assigneeId?: Id<"users">;
       recurrence?: Recurrence;
       tags?: string[];
+      listId?: Id<"lists">;
     } = {};
 
     if (args.title !== undefined) {
@@ -535,6 +562,9 @@ export const updateTask = mutation({
     }
     if (args.tags !== undefined) {
       patch.tags = args.tags ?? undefined;
+    }
+    if (args.listId !== undefined) {
+      patch.listId = args.listId ?? undefined;
     }
     if (args.assigneeId !== undefined) {
       const teamId = task.teamId;
@@ -579,6 +609,7 @@ export const toggleComplete = mutation({
         recurrence,
         workspaceId: task.workspaceId,   // heredar entorno
         tags: task.tags,                 // heredar etiquetas
+        listId: task.listId,             // heredar lista
       });
       await ctx.db.patch(taskId, { completed: true, recurrence: undefined });
     } else {
