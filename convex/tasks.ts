@@ -577,6 +577,8 @@ export const toggleComplete = mutation({
         teamId: task.teamId,
         assigneeId: task.assigneeId,
         recurrence,
+        workspaceId: task.workspaceId,   // heredar entorno
+        tags: task.tags,                 // heredar etiquetas
       });
       await ctx.db.patch(taskId, { completed: true, recurrence: undefined });
     } else {
