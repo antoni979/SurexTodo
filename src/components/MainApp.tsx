@@ -69,7 +69,7 @@ export default function MainApp({
   }, []);
 
   // Fire a browser notification once per day for overdue / due-today tasks
-  const { permission: notifPermission, enableNotifications } =
+  const { permission: notifPermission, enabled: notifEnabled, enableNotifications, disableNotifications } =
     useTaskNotifications({ today, workspaceId });
 
   // If we're viewing a list that no longer exists, go back to tasks
@@ -103,7 +103,9 @@ export default function MainApp({
           else localStorage.removeItem("defaultWorkspace");
         }}
         notifPermission={notifPermission}
+        notifEnabled={notifEnabled}
         onEnableNotifications={enableNotifications}
+        onDisableNotifications={disableNotifications}
       />
       {sidebarOpen && (
         <div

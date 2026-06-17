@@ -5,6 +5,7 @@ import type { Id } from "../../convex/_generated/dataModel";
 import { dayDiff } from "../util";
 
 const STORAGE_KEY = "lastNotifiedDate";
+const ENABLED_KEY = "notificationsEnabled";
 
 function getPermission(): NotificationPermission {
   if (!("Notification" in window)) return "denied";
@@ -37,9 +38,9 @@ function fireNotification(body: string) {
 /**
  * Returns:
  *  - permission: current Notification.permission state
+ *  - enabled: app-level toggle (can suppress even when permission is granted)
  *  - enableNotifications(): call from a button click to request permission + fire immediately
- *
- * Also auto-fires once per calendar day when permission is already granted.
+ *  - disableNotifications(): suppress future auto-notifications without revoking browser permission
  */
 export function useTaskNotifications({
   today,
@@ -50,6 +51,10 @@ export function useTaskNotifications({
 }) {
   const [permission, setPermission] =
     useState<NotificationPermission>(getPermission);
+
+  const [enabled, setEnabled] = useState<boolean>(
+    () => localStorage.getItem(ENABLED_KEY) !== "false",
+  );
 
   const tasks = useQuery(api.tasks.listPlanned, {
     today,
@@ -72,16 +77,17 @@ export function useTaskNotifications({
     return { overdue, dueToday, reviewProjects };
   }
 
-  // ── auto-fire once per day when already granted ───────────────────────
+  // ── auto-fire once per day when already granted and enabled ──────────────
 
   useEffect(() => {
     if (!("Notification" in window)) return;
     if (Notification.permission !== "granted") return;
-    if (tasks === undefined) return;        // still loading
-    if (autoFiredRef.current) return;       // already fired this session
+    if (!enabled) return;                    // disabled by user toggle
+    if (tasks === undefined) return;         // still loading
+    if (autoFiredRef.current) return;        // already fired this session
 
     const lastDate = localStorage.getItem(STORAGE_KEY);
-    if (lastDate === today) return;         // already fired today
+    if (lastDate === today) return;          // already fired today
 
     const { overdue, dueToday, reviewProjects } = counts();
     if (overdue === 0 && dueToday === 0 && reviewProjects === 0) return;
@@ -90,22 +96,25 @@ export function useTaskNotifications({
     localStorage.setItem(STORAGE_KEY, today);
     fireNotification(buildMessage(overdue, dueToday, reviewProjects));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, today]);
+  }, [tasks, today, enabled]);
 
   // ── manual enable (requires user gesture) ────────────────────────────
 
   const enableNotifications = useCallback(async () => {
     if (!("Notification" in window)) return;
 
+    // Re-enable app-level toggle first
+    localStorage.setItem(ENABLED_KEY, "true");
+    setEnabled(true);
+
     if (Notification.permission === "granted") {
-      // Already granted — fire immediately (useful as a "test" button)
+      // Already granted — fire immediately as confirmation
       const { overdue, dueToday, reviewProjects } = counts();
       const msg =
         overdue === 0 && dueToday === 0 && reviewProjects === 0
           ? "No tienes tareas pendientes para hoy 🎉"
           : buildMessage(overdue, dueToday, reviewProjects);
       fireNotification(msg);
-      // Reset daily flag so it fires again on next reload too
       localStorage.removeItem(STORAGE_KEY);
       return;
     }
@@ -126,5 +135,12 @@ export function useTaskNotifications({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks, today]);
 
-  return { permission, enableNotifications };
+  // ── disable (app-level, doesn't revoke browser permission) ────────────
+
+  const disableNotifications = useCallback(() => {
+    localStorage.setItem(ENABLED_KEY, "false");
+    setEnabled(false);
+  }, []);
+
+  return { permission, enabled, enableNotifications, disableNotifications };
 }

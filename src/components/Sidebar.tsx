@@ -26,7 +26,9 @@ export default function Sidebar({
   workspaceId,
   onWorkspaceChange,
   notifPermission,
+  notifEnabled,
   onEnableNotifications,
+  onDisableNotifications,
 }: {
   username: string;
   view: View;
@@ -35,7 +37,9 @@ export default function Sidebar({
   workspaceId: Id<"workspaces"> | null;
   onWorkspaceChange: (id: Id<"workspaces"> | null) => void;
   notifPermission: NotificationPermission;
+  notifEnabled: boolean;
   onEnableNotifications: () => void;
+  onDisableNotifications: () => void;
 }) {
   const workspaces = useQuery(api.workspaces.listMyWorkspaces) ?? [];
   const createWorkspace = useMutation(api.workspaces.createWorkspace);
@@ -317,22 +321,31 @@ export default function Sidebar({
         {"Notification" in window && (
           <div className="notif-wrap">
             <button
-              className={
-                "icon-btn notif-btn" +
-                (notifPermission === "granted" ? " notif-on" : "") +
-                (notifPermission === "denied" ? " notif-off" : "")
-              }
+              className={[
+                "icon-btn notif-btn",
+                notifPermission === "granted" && notifEnabled ? "notif-on" : "",
+                notifPermission === "denied" || (notifPermission === "granted" && !notifEnabled)
+                  ? "notif-off"
+                  : "",
+              ].filter(Boolean).join(" ")}
               title={
-                notifPermission === "granted"
-                  ? "Notificaciones activas · pulsa para probar"
-                  : notifPermission === "denied"
+                notifPermission === "denied"
                   ? "Bloqueadas — pulsa para ver cómo desbloquear"
+                  : notifPermission === "granted" && notifEnabled
+                  ? "Notificaciones activas · pulsa para desactivar"
+                  : notifPermission === "granted" && !notifEnabled
+                  ? "Notificaciones desactivadas · pulsa para activar"
                   : "Activar notificaciones de escritorio"
               }
               onClick={() => {
                 if (notifPermission === "denied") {
                   setShowNotifHelp((v) => !v);
+                } else if (notifPermission === "granted" && notifEnabled) {
+                  // Active → disable
+                  onDisableNotifications();
+                  setShowNotifHelp(true);
                 } else {
+                  // Disabled or default → enable/request
                   void onEnableNotifications();
                   if (notifPermission === "default") setShowNotifHelp(true);
                 }
@@ -354,6 +367,11 @@ export default function Sidebar({
                       <li>En <em>Notificaciones</em> elige <em>Permitir</em></li>
                       <li>Recarga la página y vuelve a pulsar la campana</li>
                     </ol>
+                  </>
+                ) : notifPermission === "granted" && !notifEnabled ? (
+                  <>
+                    <strong>Notificaciones desactivadas</strong>
+                    <p>Vuelve a pulsar la campana para reactivarlas.</p>
                   </>
                 ) : notifPermission === "default" ? (
                   <>
