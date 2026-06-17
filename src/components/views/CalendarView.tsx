@@ -36,7 +36,7 @@ export default function CalendarView({
 }) {
   const [currentYM, setCurrentYM] = useState(() => today.slice(0, 7));
   const [selectedDate, setSelectedDate] = useState<string | null>(today);
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [modalTask, setModalTask] = useState<EnrichedTask | null>(null);
 
   const tasks = useQuery(api.tasks.listPlanned, {
     today,
@@ -61,7 +61,6 @@ export default function CalendarView({
     const first = new Date(y, m - 1, 1);
     const last = new Date(y, m, 0);
 
-    // Monday-first offset (0=Mon … 6=Sun)
     const startOffset = (first.getDay() + 6) % 7;
 
     const cells: { date: string; inMonth: boolean }[] = [];
@@ -91,7 +90,6 @@ export default function CalendarView({
   const monthLabel = `${MONTHS[m - 1]} ${y}`;
 
   const dayTasks = selectedDate ? (byDate.get(selectedDate) ?? []) : [];
-  const selectedTask = dayTasks.find((t) => t._id === selectedTaskId) ?? null;
 
   return (
     <div className="screen calendar-screen">
@@ -113,12 +111,10 @@ export default function CalendarView({
       <div className="screen-scroll calendar-scroll">
         {/* ── grid ── */}
         <div className="cal-grid">
-          {/* Weekday headers */}
           {WEEKDAYS.map((d) => (
             <div key={d} className="cal-header-cell">{d}</div>
           ))}
 
-          {/* Day cells */}
           {days.map(({ date, inMonth }) => {
             const dayTaskList = byDate.get(date) ?? [];
             const pending = dayTaskList.filter((t) => !t.completed);
@@ -137,7 +133,7 @@ export default function CalendarView({
                   isSelected ? "cal-cell-selected" : "",
                   overdue ? "cal-cell-overdue" : "",
                 ].filter(Boolean).join(" ")}
-                onClick={() => { setSelectedDate(date); setSelectedTaskId(null); }}
+                onClick={() => { setSelectedDate(date); }}
               >
                 <span className="cal-day-num">{Number(date.slice(8))}</span>
                 {dayTaskList.length > 0 && (
@@ -183,13 +179,13 @@ export default function CalendarView({
                 key={t._id}
                 task={t}
                 today={today}
-                selected={t._id === selectedTaskId}
+                selected={false}
                 showTeam={true}
                 onSelect={() => {
                   if (t.isProject && onOpenProject) {
                     onOpenProject(t._id);
                   } else {
-                    setSelectedTaskId(t._id === selectedTaskId ? null : t._id);
+                    setModalTask(t);
                   }
                 }}
               />
@@ -198,15 +194,22 @@ export default function CalendarView({
         )}
       </div>
 
-      {/* TaskDetail panel */}
-      {selectedTask && (
-        <TaskDetail
-          key={selectedTask._id}
-          task={selectedTask}
-          today={today}
-          onClose={() => setSelectedTaskId(null)}
-          onOpenProject={onOpenProject}
-        />
+      {/* ── Task detail modal ── */}
+      {modalTask && (
+        <div
+          className="cal-modal-overlay"
+          onClick={(e) => { if (e.target === e.currentTarget) setModalTask(null); }}
+        >
+          <div className="cal-modal">
+            <TaskDetail
+              key={modalTask._id}
+              task={modalTask}
+              today={today}
+              onClose={() => setModalTask(null)}
+              onOpenProject={onOpenProject}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

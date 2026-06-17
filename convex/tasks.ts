@@ -681,20 +681,26 @@ export const toggleComplete = mutation({
     // Completing a recurring task: keep this one as completed history and
     // spawn the next occurrence as a fresh, active task.
     if (completing && recurrence) {
-      const base = task.dueDate ?? today ?? utcToYmd(new Date());
+      const today_s = today ?? utcToYmd(new Date());
+      // If the task had no due date, or was overdue when completed,
+      // calculate the next occurrence from today so it never lands in the past.
+      const base =
+        task.dueDate && task.dueDate >= today_s ? task.dueDate : today_s;
+      const nextDue = nextOccurrence(base, recurrence);
+
       await ctx.db.insert("tasks", {
         title: task.title,
         priority: task.priority,
         completed: false,
-        dueDate: nextOccurrence(base, recurrence),
+        dueDate: nextDue,
         note: task.note,
         creatorId: task.creatorId,
         teamId: task.teamId,
         assigneeId: task.assigneeId,
         recurrence,
-        workspaceId: task.workspaceId,   // heredar entorno
-        tags: task.tags,                 // heredar etiquetas
-        listId: task.listId,             // heredar lista
+        workspaceId: task.workspaceId,
+        tags: task.tags,
+        listId: task.listId,
       });
       await ctx.db.patch(taskId, { completed: true, recurrence: undefined });
     } else {
