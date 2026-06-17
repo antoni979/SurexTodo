@@ -91,8 +91,21 @@ export const listMyProjects = query({
       for (const t of ts) if (t.isProject) teamProjects.push(t);
     }
 
-    const all = [...personalProjects, ...teamProjects];
-    // Deduplicate (shouldn't happen, but just in case)
+    // Shared projects (invited via projectMembers, not creator)
+    const sharedMemberships = await ctx.db
+      .query("projectMembers")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    const sharedProjects: Doc<"tasks">[] = [];
+    for (const m of sharedMemberships) {
+      const p = await ctx.db.get(m.projectId);
+      if (!p || !p.isProject) continue;
+      if ((p.workspaceId ?? null) !== filterWS) continue;
+      sharedProjects.push(p);
+    }
+
+    const all = [...personalProjects, ...teamProjects, ...sharedProjects];
+    // Deduplicate (creator may also be a projectMember)
     const seen = new Set<string>();
     const unique = all.filter((t) => {
       if (seen.has(t._id)) return false;
@@ -201,6 +214,24 @@ export const getProject = query({
       }),
     );
 
+    // Users explicitly invited to this project
+    const sharedMemberRows = await ctx.db
+      .query("projectMembers")
+      .withIndex("by_project", (q) => q.eq("projectId", projectId))
+      .collect();
+    const sharedMembers: { userId: Id<"users">; username: string }[] = [];
+    for (const row of sharedMemberRows) {
+      const prof = await ctx.db
+        .query("profiles")
+        .withIndex("by_user", (q) => q.eq("userId", row.userId))
+        .unique();
+      sharedMembers.push({
+        userId: row.userId,
+        username: prof?.username ?? "(sin nombre)",
+      });
+    }
+    sharedMembers.sort((a, b) => a.username.localeCompare(b.username));
+
     const milestones = await ctx.db
       .query("milestones")
       .withIndex("by_project", (q) => q.eq("projectId", projectId))
@@ -227,7 +258,9 @@ export const getProject = query({
       teamName,
       creatorId: p.creatorId,
       creatorName: await nameOf(ctx, p.creatorId),
+      isOwner: p.creatorId === userId,
       members,
+      sharedMembers,
       tasks,
       milestones: milestones.map((m) => ({
         _id: m._id,
@@ -367,6 +400,63 @@ export const updateProject = mutation({
       patch.tags = args.tags.map((t) => t.trim()).filter((t) => t.length > 0);
     }
     await ctx.db.patch(args.projectId, patch);
+  },
+});
+
+/* ---------- mutations: project sharing ---------- */
+
+export const shareProject = mutation({
+  args: {
+    projectId: v.id("tasks"),
+    username: v.string(),
+  },
+  handler: async (ctx, { projectId, username }) => {
+    const userId = await requireUser(ctx);
+    const project = await assertProjectAccess(ctx, projectId, userId);
+    if (project.creatorId !== userId)
+      throw new Error("Solo el creador puede compartir el proyecto");
+
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_username", (q) => q.eq("username", username.trim()))
+      .unique();
+    if (!profile) throw new Error(`Usuario "${username}" no encontrado`);
+    if (profile.userId === userId)
+      throw new Error("No puedes compartir contigo mismo");
+
+    const existing = await ctx.db
+      .query("projectMembers")
+      .withIndex("by_project_user", (q) =>
+        q.eq("projectId", projectId).eq("userId", profile.userId),
+      )
+      .unique();
+    if (!existing) {
+      await ctx.db.insert("projectMembers", {
+        projectId,
+        userId: profile.userId,
+      });
+    }
+  },
+});
+
+export const unshareProject = mutation({
+  args: {
+    projectId: v.id("tasks"),
+    memberId: v.id("users"),
+  },
+  handler: async (ctx, { projectId, memberId }) => {
+    const userId = await requireUser(ctx);
+    const project = await assertProjectAccess(ctx, projectId, userId);
+    if (project.creatorId !== userId)
+      throw new Error("Solo el creador puede gestionar el acceso");
+
+    const existing = await ctx.db
+      .query("projectMembers")
+      .withIndex("by_project_user", (q) =>
+        q.eq("projectId", projectId).eq("userId", memberId),
+      )
+      .unique();
+    if (existing) await ctx.db.delete(existing._id);
   },
 });
 

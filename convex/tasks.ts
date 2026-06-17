@@ -102,7 +102,8 @@ async function isTeamMember(
 }
 
 // A user may view/edit a task if it is their personal task,
-// or if it belongs to a team they are a member of.
+// if it belongs to a team they are a member of,
+// or if it lives inside a project they have been invited to.
 export async function assertAccess(
   ctx: QueryCtx | MutationCtx,
   task: Doc<"tasks">,
@@ -112,9 +113,24 @@ export async function assertAccess(
     if (!(await isTeamMember(ctx, task.teamId, userId))) {
       throw new Error("No tienes acceso a esta tarea");
     }
-  } else if (task.creatorId !== userId) {
-    throw new Error("No tienes acceso a esta tarea");
+    return;
   }
+  if (task.creatorId === userId) return;
+
+  // Check project sharing: either this task is a shared project,
+  // or it lives inside one (parentTaskId → project).
+  const projectId = task.isProject ? task._id : task.parentTaskId;
+  if (projectId) {
+    const member = await ctx.db
+      .query("projectMembers")
+      .withIndex("by_project_user", (q) =>
+        q.eq("projectId", projectId as Id<"tasks">).eq("userId", userId),
+      )
+      .unique();
+    if (member) return;
+  }
+
+  throw new Error("No tienes acceso a esta tarea");
 }
 
 async function myDayTaskIds(
@@ -232,6 +248,30 @@ export const deleteUserTag = mutation({
       .withIndex("by_user_name", (q) => q.eq("userId", userId).eq("name", name))
       .unique();
     if (existing) await ctx.db.delete(existing._id);
+  },
+});
+
+// Fetch a single task enriched with names / myDay flag.
+// Returns null if the task doesn't exist or the caller has no access.
+export const getTask = query({
+  args: { taskId: v.id("tasks"), today: v.optional(v.string()) },
+  handler: async (ctx, { taskId, today }) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+    const task = await ctx.db.get(taskId);
+    if (!task) return null;
+    try {
+      await assertAccess(ctx, task, userId);
+    } catch {
+      return null;
+    }
+    const myDayRows = await ctx.db
+      .query("myDay")
+      .withIndex("by_task", (q) => q.eq("taskId", taskId))
+      .collect();
+    const inMyDay = myDayRows.some((r) => r.userId === userId);
+    const myDaySet = inMyDay ? new Set([taskId as string]) : new Set<string>();
+    return enrich(ctx, task, myDaySet);
   },
 });
 

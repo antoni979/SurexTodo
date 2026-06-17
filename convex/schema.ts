@@ -137,6 +137,14 @@ export default defineSchema({
     order: v.number(),
   }).index("by_project", ["projectId"]),
 
+  projectMembers: defineTable({
+    projectId: v.id("tasks"),
+    userId: v.id("users"),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_user", ["userId"])
+    .index("by_project_user", ["projectId", "userId"]),
+
   projectLinks: defineTable({
     projectId: v.id("tasks"),
     label: v.string(),

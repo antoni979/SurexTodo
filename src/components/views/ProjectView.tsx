@@ -25,7 +25,9 @@ import {
   PlusIcon,
   SearchIcon,
   TrashIcon,
+  UsersIcon,
 } from "../icons";
+import TaskDetail from "../TaskDetail";
 
 export default function ProjectView({
   projectId,
@@ -39,6 +41,12 @@ export default function ProjectView({
   const [tab, setTab] = useState<"board" | "list">("board");
   const [search, setSearch] = useState("");
   const [showDone, setShowDone] = useState(() => localStorage.getItem("showDone") !== "false");
+  const [selectedTaskId, setSelectedTaskId] = useState<Id<"tasks"> | null>(null);
+
+  const selectedTask = useQuery(
+    api.tasks.getTask,
+    selectedTaskId ? { taskId: selectedTaskId, today } : "skip",
+  );
 
   if (project === undefined) {
     return (
@@ -62,7 +70,7 @@ export default function ProjectView({
   }
 
   return (
-    <div className="screen project-screen">
+    <div className={"screen project-screen" + (selectedTaskId ? " with-detail" : "")}>
       <ProjectHeader project={project} />
       <div className="project-tabs">
         <button
@@ -100,15 +108,46 @@ export default function ProjectView({
           />
         </div>
       </div>
-      <div className="screen-scroll project-scroll">
-        <ProjectMetaPanel project={project} />
-        {tab === "board" ? (
-          <KanbanBoard project={project} today={today} search={search} showDone={showDone} />
-        ) : (
-          <TaskListPanel project={project} today={today} search={search} showDone={showDone} />
+      <div className="project-body">
+        <div className="screen-scroll project-scroll">
+          <ProjectMetaPanel project={project} />
+          {tab === "board" ? (
+            <KanbanBoard
+              project={project}
+              today={today}
+              search={search}
+              showDone={showDone}
+              onSelectTask={setSelectedTaskId}
+              selectedTaskId={selectedTaskId}
+            />
+          ) : (
+            <TaskListPanel
+              project={project}
+              today={today}
+              search={search}
+              showDone={showDone}
+              onSelectTask={setSelectedTaskId}
+              selectedTaskId={selectedTaskId}
+            />
+          )}
+          <MilestonesPanel project={project} />
+          <LinksPanel project={project} />
+        </div>
+        {selectedTaskId && (
+          <div className="project-detail-panel">
+            {selectedTask === undefined && (
+              <div className="detail-loading">Cargando…</div>
+            )}
+            {selectedTask !== null && selectedTask !== undefined && (
+              <TaskDetail
+                task={selectedTask}
+                today={today}
+                members={project.members}
+                onClose={() => setSelectedTaskId(null)}
+              />
+            )}
+          </div>
         )}
-        <MilestonesPanel project={project} />
-        <LinksPanel project={project} />
       </div>
     </div>
   );
@@ -236,8 +275,24 @@ function ProgressBar({
 
 function ProjectMetaPanel({ project }: { project: ProjectDetail }) {
   const updateProject = useMutation(api.projects.updateProject);
+  const shareProject = useMutation(api.projects.shareProject);
+  const unshareProject = useMutation(api.projects.unshareProject);
   const [description, setDescription] = useState(project.description);
   const [tagInput, setTagInput] = useState("");
+  const [shareInput, setShareInput] = useState("");
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [showShare, setShowShare] = useState(false);
+
+  async function handleShare(e: React.FormEvent) {
+    e.preventDefault();
+    setShareError(null);
+    try {
+      await shareProject({ projectId: project._id, username: shareInput.trim() });
+      setShareInput("");
+    } catch (err) {
+      setShareError(err instanceof Error ? err.message : "Error");
+    }
+  }
 
   function addTag() {
     const t = tagInput.trim();
@@ -382,6 +437,66 @@ function ProjectMetaPanel({ project }: { project: ProjectDetail }) {
               </button>
             </div>
           </div>
+
+          {/* Sharing — only visible to project owner */}
+          {project.isOwner && (
+            <div className="detail-field project-share-field">
+              <label
+                className="project-share-toggle"
+                onClick={() => setShowShare((v) => !v)}
+              >
+                <UsersIcon size={14} />
+                Compartir proyecto
+                <span className="share-count">
+                  {project.sharedMembers.length > 0
+                    ? `${project.sharedMembers.length} persona${project.sharedMembers.length > 1 ? "s" : ""}`
+                    : "Solo tú"}
+                </span>
+              </label>
+              {showShare && (
+                <div className="project-share-panel">
+                  {project.sharedMembers.map((m) => (
+                    <div key={m.userId} className="share-member-row">
+                      <div className="avatar avatar-sm">
+                        {m.username.charAt(0).toUpperCase()}
+                      </div>
+                      <span className="share-member-name">{m.username}</span>
+                      <button
+                        className="icon-btn"
+                        title="Revocar acceso"
+                        onClick={() =>
+                          void unshareProject({
+                            projectId: project._id,
+                            memberId: m.userId,
+                          })
+                        }
+                      >
+                        <CloseIcon size={13} />
+                      </button>
+                    </div>
+                  ))}
+                  <form className="share-invite-form" onSubmit={handleShare}>
+                    <input
+                      type="text"
+                      value={shareInput}
+                      placeholder="Nombre de usuario"
+                      onChange={(e) => setShareInput(e.target.value)}
+                    />
+                    <button
+                      type="submit"
+                      className="btn-primary btn-sm"
+                      disabled={!shareInput.trim()}
+                    >
+                      Invitar
+                    </button>
+                  </form>
+                  {shareError && (
+                    <p className="composer-error">{shareError}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </section>
@@ -395,11 +510,15 @@ function KanbanBoard({
   today,
   search,
   showDone,
+  onSelectTask,
+  selectedTaskId,
 }: {
   project: ProjectDetail;
   today: string;
   search: string;
   showDone: boolean;
+  onSelectTask: (id: Id<"tasks">) => void;
+  selectedTaskId: Id<"tasks"> | null;
 }) {
   const moveTask = useMutation(api.tasks.moveTaskInKanban);
   const createTask = useMutation(api.tasks.createTask);
@@ -487,6 +606,8 @@ function KanbanBoard({
                 onDragEnd={() => setDraggingId(null)}
                 projectId={project._id}
                 members={project.members}
+                selected={selectedTaskId === t._id}
+                onSelect={() => onSelectTask(t._id as Id<"tasks">)}
                 onMove={(s) =>
                   void moveTask({
                     taskId: t._id as Id<"tasks">,
@@ -572,6 +693,8 @@ function KanbanCard({
   onMove,
   projectId,
   members,
+  onSelect,
+  selected,
 }: {
   task: ProjectTask;
   today: string;
@@ -580,6 +703,8 @@ function KanbanCard({
   onMove: (s: KanbanStatus) => void;
   projectId: Id<"tasks">;
   members: { userId: Id<"users">; username: string }[];
+  onSelect: () => void;
+  selected: boolean;
 }) {
   const toggle = useMutation(api.tasks.toggleComplete);
   const updateTask = useMutation(api.tasks.updateTask);
@@ -592,7 +717,7 @@ function KanbanCard({
 
   return (
     <div
-      className={"kanban-card" + (task.completed ? " done" : "")}
+      className={"kanban-card" + (task.completed ? " done" : "") + (selected ? " kanban-card-selected" : "")}
       draggable
       onDragStart={(e) => {
         e.dataTransfer.setData("text/plain", task._id);
@@ -609,10 +734,17 @@ function KanbanCard({
         </button>
         <div
           className="kanban-card-title"
-          onClick={() => setOpen(!open)}
+          onClick={onSelect}
         >
           {task.title}
         </div>
+        <button
+          className="icon-btn kanban-expand-btn"
+          title="Expandir"
+          onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+        >
+          {open ? "▲" : "▼"}
+        </button>
       </div>
       <div className="kanban-card-meta">
         <span className="chip" style={{ color: meta.color }}>
@@ -739,11 +871,15 @@ function TaskListPanel({
   today,
   search,
   showDone,
+  onSelectTask,
+  selectedTaskId,
 }: {
   project: ProjectDetail;
   today: string;
   search: string;
   showDone: boolean;
+  onSelectTask: (id: Id<"tasks">) => void;
+  selectedTaskId: Id<"tasks"> | null;
 }) {
   const toggle = useMutation(api.tasks.toggleComplete);
   const deleteTask = useMutation(api.tasks.deleteTask);
@@ -769,14 +905,17 @@ function TaskListPanel({
       {filtered.map((t) => {
         const meta = PRIORITY_META[t.priority as Priority];
         const due = t.dueDate ? formatDue(t.dueDate, today) : null;
+        const isSelected = selectedTaskId === t._id;
         return (
           <div
             key={t._id}
-            className={"task-row" + (t.completed ? " done" : "")}
+            className={"task-row" + (t.completed ? " done" : "") + (isSelected ? " task-row-selected" : "")}
+            onClick={() => onSelectTask(t._id as Id<"tasks">)}
+            style={{ cursor: "pointer" }}
           >
             <button
               className={"check" + (t.completed ? " checked" : "")}
-              onClick={() => void toggle({ taskId: t._id, today })}
+              onClick={(e) => { e.stopPropagation(); void toggle({ taskId: t._id, today }); }}
             >
               {t.completed && <CheckIcon size={13} />}
             </button>
@@ -807,7 +946,8 @@ function TaskListPanel({
             </div>
             <button
               className="icon-btn"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 if (confirm("¿Eliminar esta tarea?"))
                   void deleteTask({ taskId: t._id });
               }}
