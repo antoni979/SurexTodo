@@ -41,7 +41,7 @@ export type RecurrenceType =
   | "monthly"
   | "custom";
 
-export type Recurrence = { type: RecurrenceType; days?: number[] };
+export type Recurrence = { type: RecurrenceType; days?: number[]; interval?: number };
 
 /** Weekday buttons, Monday-first. n = JS getDay() value (0 = domingo). */
 export const WEEKDAYS: { n: number; label: string }[] = [
@@ -96,6 +96,24 @@ export function localToday(): string {
 function dateFromStr(s: string): Date {
   const [y, m, d] = s.split("-").map(Number);
   return new Date(y, m - 1, d);
+}
+
+function addDaysToStr(s: string, n: number): string {
+  const [y, m, d] = s.split("-").map(Number);
+  const date = new Date(y, m - 1, d + n);
+  return (
+    date.getFullYear() +
+    "-" + String(date.getMonth() + 1).padStart(2, "0") +
+    "-" + String(date.getDate()).padStart(2, "0")
+  );
+}
+
+export function tomorrow(today: string): string {
+  return addDaysToStr(today, 1);
+}
+
+export function nextWeek(today: string): string {
+  return addDaysToStr(today, 7);
 }
 
 /** Whole-day difference: due - today (negative = overdue). */

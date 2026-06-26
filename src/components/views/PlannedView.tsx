@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -35,13 +36,25 @@ export default function PlannedView({
     ...(workspaceId ? { workspaceId } : {}),
   });
   const createTask = useMutation(api.tasks.createTask);
+  const lists = useQuery(api.lists.listMyLists, workspaceId ? { workspaceId } : {}) ?? [];
+  const allTags = useQuery(api.tasks.listAllTags) ?? [];
 
-  const list = tasks ?? [];
+  const [filterListId, setFilterListId] = useState<string>("");
+  const [filterTag, setFilterTag] = useState<string>("");
+
+  const rawList = tasks ?? [];
+
+  const list = rawList.filter((t) => {
+    if (filterListId && (t.listId ?? "") !== filterListId) return false;
+    if (filterTag && !(t.tags ?? []).includes(filterTag)) return false;
+    return true;
+  });
+
   const sorter = byDueThenPriority(today);
 
   const overdue: EnrichedTask[] = [];
   const todayTasks: EnrichedTask[] = [];
-  const tomorrow: EnrichedTask[] = [];
+  const tomorrowTasks: EnrichedTask[] = [];
   const upcoming: EnrichedTask[] = [];
   const done: EnrichedTask[] = [];
 
@@ -53,20 +66,59 @@ export default function PlannedView({
     const diff = t.dueDate ? dayDiff(t.dueDate, today) : 99;
     if (diff < 0) overdue.push(t);
     else if (diff === 0) todayTasks.push(t);
-    else if (diff === 1) tomorrow.push(t);
+    else if (diff === 1) tomorrowTasks.push(t);
     else upcoming.push(t);
   }
-  [overdue, todayTasks, tomorrow, upcoming, done].forEach((g) =>
+  [overdue, todayTasks, tomorrowTasks, upcoming, done].forEach((g) =>
     g.sort(sorter),
   );
 
   const groups: TaskGroup[] = [
     { label: "Vencidas", tasks: overdue },
     { label: "Hoy", tasks: todayTasks },
-    { label: "Mañana", tasks: tomorrow },
+    { label: "Mañana", tasks: tomorrowTasks },
     { label: "Próximamente", tasks: upcoming },
     { label: "Completadas", tasks: done },
   ];
+
+  const filterBar = (
+    <div className="planned-filters">
+      {lists.length > 0 && (
+        <select
+          value={filterListId}
+          onChange={(e) => setFilterListId(e.target.value)}
+          className="filter-select"
+          title="Filtrar por lista"
+        >
+          <option value="">Todas las listas</option>
+          {lists.map((l) => (
+            <option key={l._id} value={l._id}>{l.name}</option>
+          ))}
+        </select>
+      )}
+      {allTags.length > 0 && (
+        <select
+          value={filterTag}
+          onChange={(e) => setFilterTag(e.target.value)}
+          className="filter-select"
+          title="Filtrar por etiqueta"
+        >
+          <option value="">Todas las etiquetas</option>
+          {allTags.map((t) => (
+            <option key={t} value={t}>{t}</option>
+          ))}
+        </select>
+      )}
+      {(filterListId || filterTag) && (
+        <button
+          className="filter-clear-btn"
+          onClick={() => { setFilterListId(""); setFilterTag(""); }}
+        >
+          ✕ Limpiar
+        </button>
+      )}
+    </div>
+  );
 
   return (
     <TaskScreen
@@ -80,6 +132,7 @@ export default function PlannedView({
       loading={tasks === undefined}
       workspaceId={workspaceId}
       emptyText="No tienes tareas con fecha de vencimiento. Las tareas de equipo asignadas a ti también aparecerán aquí."
+      headerExtra={filterBar}
       composer={
         <Composer
           placeholder="Añadir una tarea con vencimiento"

@@ -12,6 +12,7 @@ import {
 type Recurrence = {
   type: "daily" | "weekdays" | "weekly" | "monthly" | "custom";
   days?: number[];
+  interval?: number;
 };
 
 /* ---------- recurrence date math (UTC, date-only) ---------- */
@@ -38,16 +39,17 @@ function addDays(d: Date, n: number): Date {
 }
 
 function nextOccurrence(base: string, rec: Recurrence): string {
+  const n = Math.max(1, rec.interval ?? 1);
   const d = ymdToUTC(base);
   switch (rec.type) {
     case "daily":
-      return utcToYmd(addDays(d, 1));
+      return utcToYmd(addDays(d, n));
     case "weekly":
-      return utcToYmd(addDays(d, 7));
+      return utcToYmd(addDays(d, 7 * n));
     case "monthly": {
       const r = new Date(d);
       const day = r.getUTCDate();
-      r.setUTCMonth(r.getUTCMonth() + 1);
+      r.setUTCMonth(r.getUTCMonth() + n);
       if (r.getUTCDate() !== day) r.setUTCDate(0);
       return utcToYmd(r);
     }
@@ -59,13 +61,19 @@ function nextOccurrence(base: string, rec: Recurrence): string {
       return utcToYmd(next);
     }
     case "custom": {
-      const days = rec.days && rec.days.length ? rec.days : [d.getUTCDay()];
+      // For custom days with interval > 1, skip N-1 whole weeks between occurrences
+      const days = rec.days && rec.days.length ? [...rec.days].sort((a, b) => a - b) : [d.getUTCDay()];
       let next = addDays(d, 1);
+      // Find the next matching weekday
       for (let i = 0; i < 14; i++) {
-        if (days.includes(next.getUTCDay())) return utcToYmd(next);
+        if (days.includes(next.getUTCDay())) {
+          if (n <= 1) return utcToYmd(next);
+          // Skip (n-1) full weeks from this occurrence
+          return utcToYmd(addDays(next, 7 * (n - 1)));
+        }
         next = addDays(next, 1);
       }
-      return utcToYmd(addDays(d, 7));
+      return utcToYmd(addDays(d, 7 * n));
     }
   }
 }

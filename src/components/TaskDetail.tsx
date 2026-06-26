@@ -7,6 +7,8 @@ import {
   type Priority,
   PRIORITIES,
   PRIORITY_META,
+  tomorrow,
+  nextWeek,
 } from "../util";
 import {
   CloseIcon,
@@ -46,7 +48,10 @@ export default function TaskDetail({
   const [tagInput, setTagInput] = useState("");
   const [tagFocused, setTagFocused] = useState(false);
   const allTags = useQuery(api.tasks.listAllTags) ?? [];
-  const allLists = useQuery(api.lists.listMyLists, {}) ?? [];
+  const allLists = useQuery(
+    api.lists.listMyLists,
+    task.workspaceId ? { workspaceId: task.workspaceId } : {},
+  ) ?? [];
 
   function saveTitle() {
     const t = title.trim();
@@ -151,6 +156,31 @@ export default function TaskDetail({
 
         <div className="detail-field">
           <label>Fecha de vencimiento</label>
+          <div className="date-quick-row">
+            <button
+              className={"date-quick-btn" + (task.dueDate === tomorrow(today) ? " active" : "")}
+              type="button"
+              onClick={() => void updateTask({ taskId: task._id, dueDate: tomorrow(today) })}
+            >
+              Mañana
+            </button>
+            <button
+              className={"date-quick-btn" + (task.dueDate === nextWeek(today) ? " active" : "")}
+              type="button"
+              onClick={() => void updateTask({ taskId: task._id, dueDate: nextWeek(today) })}
+            >
+              Semana próxima
+            </button>
+            {task.dueDate && (
+              <button
+                className="date-quick-btn date-quick-clear"
+                type="button"
+                onClick={() => void updateTask({ taskId: task._id, dueDate: null })}
+              >
+                ✕
+              </button>
+            )}
+          </div>
           <input
             type="date"
             value={task.dueDate ?? ""}

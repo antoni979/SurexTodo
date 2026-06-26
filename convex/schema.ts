@@ -19,6 +19,8 @@ export const recurrenceValidator = v.object({
   ),
   // For "custom": weekday numbers, 0 = domingo … 6 = sábado.
   days: v.optional(v.array(v.number())),
+  // Repeat every N units (default 1). E.g. interval=2 + type="weekly" = every 2 weeks.
+  interval: v.optional(v.number()),
 });
 
 export const projectStatusValidator = v.union(

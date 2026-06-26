@@ -24,6 +24,7 @@ export default function TaskScreen({
   emptyText,
   onOpenProject,
   workspaceId,
+  headerExtra,
 }: {
   title: string;
   accent: string;
@@ -31,6 +32,7 @@ export default function TaskScreen({
   groups: TaskGroup[];
   composer?: ReactNode;
   beforeList?: ReactNode;
+  headerExtra?: ReactNode;
   today: string;
   members?: Member[];
   showTeamChip: boolean;
@@ -173,6 +175,9 @@ export default function TaskScreen({
               🖨 Imprimir
             </button>
           </div>
+          {headerExtra && (
+            <div className="header-extra">{headerExtra}</div>
+          )}
           {allTags.length > 0 && (
             <div className="tag-filter">
               <button

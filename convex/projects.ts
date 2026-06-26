@@ -416,24 +416,39 @@ export const shareProject = mutation({
     if (project.creatorId !== userId)
       throw new Error("Solo el creador puede compartir el proyecto");
 
-    const profile = await ctx.db
+    const input = username.trim();
+
+    // Try by username first, then by email (auth users table)
+    let targetUserId: Id<"users"> | null = null;
+    const profileByUsername = await ctx.db
       .query("profiles")
-      .withIndex("by_username", (q) => q.eq("username", username.trim()))
+      .withIndex("by_username", (q) => q.eq("username", input))
       .unique();
-    if (!profile) throw new Error(`Usuario "${username}" no encontrado`);
-    if (profile.userId === userId)
+    if (profileByUsername) {
+      targetUserId = profileByUsername.userId;
+    } else {
+      // Fall back to looking up by email in the auth users table
+      const userByEmail = await ctx.db
+        .query("users")
+        .withIndex("email", (q) => q.eq("email", input))
+        .unique();
+      if (userByEmail) targetUserId = userByEmail._id as Id<"users">;
+    }
+
+    if (!targetUserId) throw new Error(`Usuario "${input}" no encontrado`);
+    if (targetUserId === userId)
       throw new Error("No puedes compartir contigo mismo");
 
     const existing = await ctx.db
       .query("projectMembers")
       .withIndex("by_project_user", (q) =>
-        q.eq("projectId", projectId).eq("userId", profile.userId),
+        q.eq("projectId", projectId).eq("userId", targetUserId!),
       )
       .unique();
     if (!existing) {
       await ctx.db.insert("projectMembers", {
         projectId,
-        userId: profile.userId,
+        userId: targetUserId!,
       });
     }
   },

@@ -2610,3 +2610,97 @@ input[type="date"]:hover::-webkit-calendar-picker-indicator {
     padding: 14px 14px 60px;
   }
 }
+
+/* ---------- recurrence interval ---------- */
+.recur-interval {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: nowrap;
+}
+.recur-interval-label {
+  font-size: 12px;
+  color: var(--text-soft);
+}
+.recur-interval-input {
+  width: 48px;
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  text-align: center;
+}
+.recur-interval-unit {
+  font-size: 12px;
+  color: var(--text-soft);
+}
+.day-toggles {
+  flex-wrap: wrap;
+}
+
+/* ---------- date quick buttons ---------- */
+.date-quick-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.date-quick-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  font-size: 12px;
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.date-quick-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.date-quick-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.date-quick-clear {
+  margin-left: auto;
+  border-color: transparent;
+  color: var(--text-soft);
+}
+
+/* ---------- planned filters / list sort ---------- */
+.planned-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 4px 0 2px;
+}
+.filter-select {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg);
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+}
+.filter-clear-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg);
+  font-size: 12px;
+  color: var(--text-soft);
+  cursor: pointer;
+}
+.filter-clear-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.header-extra {
+  padding: 0 0 2px;
+}
