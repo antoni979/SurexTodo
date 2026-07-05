@@ -58,12 +58,16 @@ export const createWorkspace = mutation({
   },
 });
 
+// Only the workspace owner can see who's addable — otherwise this would
+// leak every registered username (including people from other companies)
+// to any member of the workspace.
 export const listAddableUsers = query({
   args: { workspaceId: v.id("workspaces") },
   handler: async (ctx, { workspaceId }) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
-    if (!(await isMember(ctx, workspaceId, userId))) return [];
+    const ws = await ctx.db.get(workspaceId);
+    if (!ws || ws.ownerId !== userId) return [];
     const memberRows = await ctx.db
       .query("workspaceMembers")
       .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
@@ -81,8 +85,10 @@ export const addMember = mutation({
   args: { workspaceId: v.id("workspaces"), userId: v.id("users") },
   handler: async (ctx, { workspaceId, userId }) => {
     const me = await requireUser(ctx);
-    if (!(await isMember(ctx, workspaceId, me)))
-      throw new Error("No perteneces a este entorno");
+    const ws = await ctx.db.get(workspaceId);
+    if (!ws) throw new Error("Entorno no encontrado");
+    if (ws.ownerId !== me)
+      throw new Error("Solo el propietario puede añadir miembros");
     if (await isMember(ctx, workspaceId, userId))
       throw new Error("Ese usuario ya está en el entorno");
     await ctx.db.insert("workspaceMembers", { workspaceId, userId });

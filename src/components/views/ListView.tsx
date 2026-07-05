@@ -146,6 +146,7 @@ export default function ListView({
       emptyText="Esta lista está vacía. Añade la primera tarea abajo."
       composer={
         <Composer
+          workspaceId={workspaceId}
           placeholder={`Añadir a "${list?.name ?? "lista"}"`}
           onCreate={(d) =>
             createTask({

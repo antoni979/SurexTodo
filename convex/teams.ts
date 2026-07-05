@@ -94,19 +94,23 @@ export const getTeam = query({
       _id: team._id,
       name: team.name,
       ownerId: team.ownerId,
+      workspaceId: team.workspaceId,
       isOwner: team.ownerId === userId,
       members,
     };
   },
 });
 
-// Users (with a username) that are not yet in the given team.
+// Users (with a username) that are not yet in the given team, restricted to
+// people who already belong to the team's own workspace (never leaks names
+// from other companies/workspaces). Only the team owner can call this.
 export const listAddableUsers = query({
   args: { teamId: v.id("teams") },
   handler: async (ctx, { teamId }) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
-    if (!(await isMember(ctx, teamId, userId))) return [];
+    const team = await ctx.db.get(teamId);
+    if (!team || team.ownerId !== userId) return [];
 
     const memberRows = await ctx.db
       .query("teamMembers")
@@ -114,9 +118,19 @@ export const listAddableUsers = query({
       .collect();
     const memberSet = new Set(memberRows.map((r) => r.userId as string));
 
+    let candidateIds: Set<string> | null = null;
+    if (team.workspaceId) {
+      const wsMembers = await ctx.db
+        .query("workspaceMembers")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", team.workspaceId!))
+        .collect();
+      candidateIds = new Set(wsMembers.map((m) => m.userId as string));
+    }
+
     const profiles = await ctx.db.query("profiles").collect();
     return profiles
       .filter((p) => !memberSet.has(p.userId as string))
+      .filter((p) => candidateIds === null || candidateIds.has(p.userId as string))
       .map((p) => ({ userId: p.userId, username: p.username }))
       .sort((a, b) => a.username.localeCompare(b.username));
   },
@@ -126,8 +140,21 @@ export const addMember = mutation({
   args: { teamId: v.id("teams"), userId: v.id("users") },
   handler: async (ctx, { teamId, userId }) => {
     const me = await requireUser(ctx);
-    if (!(await isMember(ctx, teamId, me))) {
-      throw new Error("No perteneces a este equipo");
+    const team = await ctx.db.get(teamId);
+    if (!team) throw new Error("Equipo no encontrado");
+    if (team.ownerId !== me) {
+      throw new Error("Solo el propietario puede añadir miembros");
+    }
+    if (team.workspaceId) {
+      const wsMember = await ctx.db
+        .query("workspaceMembers")
+        .withIndex("by_workspace_user", (q) =>
+          q.eq("workspaceId", team.workspaceId!).eq("userId", userId),
+        )
+        .unique();
+      if (!wsMember) {
+        throw new Error("Ese usuario no pertenece a este entorno");
+      }
     }
     if (await isMember(ctx, teamId, userId)) {
       throw new Error("Ese usuario ya está en el equipo");

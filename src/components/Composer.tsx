@@ -27,11 +27,13 @@ export default function Composer({
   defaultDueDate,
   placeholder = "Añadir una tarea",
   onCreate,
+  workspaceId,
 }: {
   members?: Member[];
   defaultDueDate?: string;
   placeholder?: string;
   onCreate: (data: ComposerData) => Promise<void>;
+  workspaceId?: Id<"workspaces"> | null;
 }) {
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState<Priority>("media");
@@ -46,7 +48,8 @@ export default function Composer({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const allTags = useQuery(api.tasks.listAllTags) ?? [];
+  const allTags =
+    useQuery(api.tasks.listAllTags, workspaceId ? { workspaceId } : {}) ?? [];
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

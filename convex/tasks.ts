@@ -202,14 +202,16 @@ function isTopLevel(_ctx: QueryCtx, task: Doc<"tasks">) {
 
 /* ---------- queries ---------- */
 
-// All tags owned by this user. Stored in userTags table (persistent) plus
-// any tags still on tasks created by the user (backward compat).
-// Does NOT include tags from tasks merely assigned to this user.
+// All tags owned by this user, scoped to a single entorno. Stored in
+// userTags table (persistent) plus any tags still on tasks created by the
+// user (backward compat). Does NOT include tags from tasks merely assigned
+// to this user, and never mixes tags across entornos.
 export const listAllTags = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { workspaceId: v.optional(v.id("workspaces")) },
+  handler: async (ctx, { workspaceId }) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
+    const filterWS = workspaceId ?? null;
 
     // Explicit user tag store (persists even when removed from tasks)
     const stored = await ctx.db
@@ -223,8 +225,11 @@ export const listAllTags = query({
       .withIndex("by_creator", (q) => q.eq("creatorId", userId))
       .collect();
 
-    const tagSet = new Set<string>(stored.map((t) => t.name));
+    const tagSet = new Set<string>(
+      stored.filter((t) => (t.workspaceId ?? null) === filterWS).map((t) => t.name),
+    );
     for (const t of created) {
+      if ((t.workspaceId ?? null) !== filterWS) continue;
       for (const tag of t.tags ?? []) tagSet.add(tag);
     }
     return Array.from(tagSet).sort();

@@ -439,6 +439,18 @@ export const shareProject = mutation({
     if (targetUserId === userId)
       throw new Error("No puedes compartir contigo mismo");
 
+    if (project.workspaceId) {
+      const wsMember = await ctx.db
+        .query("workspaceMembers")
+        .withIndex("by_workspace_user", (q) =>
+          q.eq("workspaceId", project.workspaceId!).eq("userId", targetUserId!),
+        )
+        .unique();
+      if (!wsMember) {
+        throw new Error(`Usuario "${input}" no encontrado`);
+      }
+    }
+
     const existing = await ctx.db
       .query("projectMembers")
       .withIndex("by_project_user", (q) =>
