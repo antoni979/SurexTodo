@@ -19,7 +19,7 @@ export default function SignIn() {
       setError(
         flow === "signIn"
           ? "Email o contraseña incorrectos."
-          : "No se pudo crear la cuenta. Revisa el email o usa una contraseña más larga (mín. 8 caracteres).",
+          : "No se pudo crear la cuenta. Revisa el email o usa una contraseña más larga (mín. 6 caracteres).",
       );
       setLoading(false);
     }
@@ -56,9 +56,9 @@ export default function SignIn() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Mínimo 8 caracteres"
+              placeholder="Mínimo 6 caracteres"
               required
-              minLength={8}
+              minLength={6}
               autoComplete={
                 flow === "signIn" ? "current-password" : "new-password"
               }
