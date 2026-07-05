@@ -42,34 +42,17 @@ export default function Sidebar({
   onDisableNotifications: () => void;
 }) {
   const workspaces = useQuery(api.workspaces.listMyWorkspaces) ?? [];
-  const createWorkspace = useMutation(api.workspaces.createWorkspace);
   const teams = useQuery(api.teams.listMyTeams, workspaceId ? { workspaceId } : {}) ?? [];
   const projects = useQuery(api.projects.listMyProjects, workspaceId ? { workspaceId } : {}) ?? [];
   const lists = useQuery(api.lists.listMyLists, workspaceId ? { workspaceId } : {}) ?? [];
   const createList = useMutation(api.lists.createList);
   const { signOut } = useAuthActions();
   const [showNewTeam, setShowNewTeam] = useState(false);
-  const [showNewWorkspace, setShowNewWorkspace] = useState(false);
-  const [newWsName, setNewWsName] = useState("");
-  const [wsError, setWsError] = useState<string | null>(null);
   const [showNotifHelp, setShowNotifHelp] = useState(false);
   const [showNewList, setShowNewList] = useState(false);
   const [newListName, setNewListName] = useState("");
   const [newListColor, setNewListColor] = useState(DEFAULT_COLOR);
   const [listError, setListError] = useState<string | null>(null);
-
-  async function handleCreateWorkspace(e: React.FormEvent) {
-    e.preventDefault();
-    setWsError(null);
-    try {
-      const id = await createWorkspace({ name: newWsName });
-      setNewWsName("");
-      setShowNewWorkspace(false);
-      onWorkspaceChange(id);
-    } catch (err) {
-      setWsError(err instanceof Error ? err.message : "Error");
-    }
-  }
 
   async function handleCreateList(e: React.FormEvent) {
     e.preventDefault();
@@ -119,29 +102,7 @@ export default function Sidebar({
             {ws.name}
           </button>
         ))}
-        <button
-          className="ws-pill ws-add"
-          title="Nuevo entorno"
-          onClick={() => setShowNewWorkspace(!showNewWorkspace)}
-        >
-          <PlusIcon size={12} />
-        </button>
       </div>
-      {showNewWorkspace && (
-        <form className="ws-new-form" onSubmit={handleCreateWorkspace}>
-          <input
-            type="text"
-            value={newWsName}
-            onChange={(e) => setNewWsName(e.target.value)}
-            placeholder="Nombre del entorno"
-            autoFocus
-          />
-          <button type="submit" className="btn-primary btn-sm" disabled={!newWsName.trim()}>
-            Crear
-          </button>
-          {wsError && <span className="composer-error">{wsError}</span>}
-        </form>
-      )}
 
       <nav className="sidebar-nav">
         <button

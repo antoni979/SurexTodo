@@ -43,18 +43,12 @@ export const listMyWorkspaces = query({
   },
 });
 
+// Disabled: entornos ahora se crean solo desde el backend (ver
+// adminOps.ts), nunca por un usuario desde la app.
 export const createWorkspace = mutation({
   args: { name: v.string() },
-  handler: async (ctx, { name }) => {
-    const userId = await requireUser(ctx);
-    const clean = name.trim();
-    if (!clean) throw new Error("El entorno necesita un nombre");
-    const workspaceId = await ctx.db.insert("workspaces", {
-      name: clean,
-      ownerId: userId,
-    });
-    await ctx.db.insert("workspaceMembers", { workspaceId, userId });
-    return workspaceId;
+  handler: async () => {
+    throw new Error("La creación de entornos está desactivada");
   },
 });
 
