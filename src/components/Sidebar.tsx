@@ -16,8 +16,7 @@ import {
   SettingsIcon,
 } from "./icons";
 import SettingsModal from "./SettingsModal";
-import { PROJECT_STATUS_META } from "../util";
-import { LIST_COLORS, DEFAULT_COLOR } from "../../convex/lists";
+import { PROJECT_STATUS_META, LIST_COLORS, DEFAULT_COLOR } from "../util";
 import NewTeamModal from "./NewTeamModal";
 
 export default function Sidebar({

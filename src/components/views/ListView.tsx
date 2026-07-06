@@ -2,10 +2,9 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
-import { sortTasks, type EnrichedTask } from "../../util";
+import { sortTasks, type EnrichedTask, LIST_COLORS, DEFAULT_COLOR } from "../../util";
 import Composer from "../Composer";
 import TaskScreen, { type TaskGroup } from "../TaskScreen";
-import { LIST_COLORS, DEFAULT_COLOR } from "../../../convex/lists";
 
 type SortMode = "default" | "date_asc" | "date_desc";
 

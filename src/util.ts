@@ -15,6 +15,22 @@ export type ProjectDetail = NonNullable<
 
 export type ProjectTask = ProjectDetail["tasks"][number];
 
+// Colores de lista (copia segura para el navegador; el backend tiene la suya
+// en convex/lists.ts). No importar convex/lists.ts desde el frontend: arrastra
+// código de servidor al bundle y Convex lo rechaza.
+export const LIST_COLORS = [
+  "#ef4444", // rojo
+  "#f97316", // naranja
+  "#eab308", // amarillo
+  "#22c55e", // verde
+  "#06b6d4", // cian
+  "#3b82f6", // azul (defecto)
+  "#8b5cf6", // morado
+  "#ec4899", // rosa
+];
+
+export const DEFAULT_COLOR = "#3b82f6";
+
 export type Priority = "baja" | "media" | "alta" | "urgente";
 
 export const PRIORITIES: Priority[] = ["baja", "media", "alta", "urgente"];
