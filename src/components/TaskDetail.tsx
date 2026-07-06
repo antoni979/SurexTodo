@@ -47,7 +47,11 @@ export default function TaskDetail({
   const [converting, setConverting] = useState(false);
   const [tagInput, setTagInput] = useState("");
   const [tagFocused, setTagFocused] = useState(false);
-  const allTags = useQuery(api.tasks.listAllTags) ?? [];
+  const allTags =
+    useQuery(
+      api.tasks.listAllTags,
+      task.workspaceId ? { workspaceId: task.workspaceId } : {},
+    ) ?? [];
   const allLists = useQuery(
     api.lists.listMyLists,
     task.workspaceId ? { workspaceId: task.workspaceId } : {},

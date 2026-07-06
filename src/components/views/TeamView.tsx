@@ -12,10 +12,12 @@ function TeamBar({
   teamId,
   members,
   myUserId,
+  isOwner,
 }: {
   teamId: Id<"teams">;
   members: { userId: Id<"users">; username: string }[];
   myUserId: Id<"users">;
+  isOwner: boolean;
 }) {
   const addMember = useMutation(api.teams.addMember);
   const addable = useQuery(api.teams.listAddableUsers, { teamId }) ?? [];
@@ -43,10 +45,12 @@ function TeamBar({
             {m.userId === myUserId && <em>&nbsp;(tú)</em>}
           </span>
         ))}
-        <button className="member-add" onClick={() => setOpen(!open)}>
-          <PlusIcon size={14} />
-          Añadir miembro
-        </button>
+        {isOwner && (
+          <button className="member-add" onClick={() => setOpen(!open)}>
+            <PlusIcon size={14} />
+            Añadir miembro
+          </button>
+        )}
       </div>
       {open && (
         <div className="member-form">
@@ -138,6 +142,7 @@ export default function TeamView({
             teamId={teamId}
             members={team.members}
             myUserId={myUserId}
+            isOwner={team.isOwner}
           />
           <div className="assignee-filter">
             <span className="assignee-filter-label">Mostrar:</span>
@@ -194,6 +199,7 @@ export default function TeamView({
         <Composer
           placeholder="Añadir una tarea de equipo"
           members={team.members}
+          workspaceId={team.workspaceId}
           onCreate={(d) =>
             createTask({
               title: d.title,

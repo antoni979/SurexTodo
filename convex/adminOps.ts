@@ -1,5 +1,7 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, action, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+import { createAccount } from "@convex-dev/auth/server";
+import { internal } from "./_generated/api";
 
 // List all profiles (CLI use only)
 export const listProfiles = query({
@@ -114,5 +116,194 @@ export const setupUsers = mutation({
     }
 
     return log;
+  },
+});
+
+// One-time setup: migrate remaining orphan tasks/tags (no workspaceId) to
+// Surexport, create the "Principal" workspace (owned by Antoni, no other
+// members), and move any pre-existing team named "STILARO" into it under a
+// neutral name so the real company name never appears in the data. Safe to
+// re-run — it's idempotent (won't recreate the workspace or double count).
+export const setupPrincipalAndMigrate = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const allWorkspaces = await ctx.db.query("workspaces").collect();
+    const surexport = allWorkspaces.find((w) => w.name === "Surexport");
+    if (!surexport) throw new Error('Workspace "Surexport" not found');
+
+    let tasksMigrated = 0;
+    const allTasks = await ctx.db.query("tasks").collect();
+    for (const t of allTasks) {
+      if (!t.workspaceId) {
+        await ctx.db.patch(t._id, { workspaceId: surexport._id });
+        tasksMigrated++;
+      }
+    }
+
+    let tagsMigrated = 0;
+    const allTags = await ctx.db.query("userTags").collect();
+    for (const tag of allTags) {
+      if (!tag.workspaceId) {
+        await ctx.db.patch(tag._id, { workspaceId: surexport._id });
+        tagsMigrated++;
+      }
+    }
+
+    const profiles = await ctx.db.query("profiles").collect();
+    const antoni = profiles.find((p) => p.username === "Antoni");
+    if (!antoni) throw new Error('Profile "Antoni" not found');
+
+    let principal = allWorkspaces.find((w) => w.name === "Principal");
+    let createdPrincipal = false;
+    if (!principal) {
+      const id = await ctx.db.insert("workspaces", {
+        name: "Principal",
+        ownerId: antoni.userId,
+      });
+      await ctx.db.insert("workspaceMembers", {
+        workspaceId: id,
+        userId: antoni.userId,
+      });
+      principal = { _id: id, name: "Principal", ownerId: antoni.userId } as any;
+      createdPrincipal = true;
+    }
+
+    const teams = await ctx.db.query("teams").collect();
+    const stilaro = teams.find((t) => t.name === "STILARO");
+    let renamedTeam = false;
+    if (stilaro) {
+      await ctx.db.patch(stilaro._id, {
+        workspaceId: principal!._id,
+        name: "General",
+      });
+      renamedTeam = true;
+    }
+
+    return {
+      tasksMigrated,
+      tagsMigrated,
+      principalWorkspaceId: principal!._id,
+      createdPrincipal,
+      renamedStilaroTeam: renamedTeam,
+    };
+  },
+});
+
+// Deletes a workspace by name, migrating its tasks/teams to another named
+// workspace first (or leaving them orphaned if no target is given). CLI-only.
+export const deleteWorkspace = mutation({
+  args: { name: v.string(), migrateTasksTeamsTo: v.optional(v.string()) },
+  handler: async (ctx, { name, migrateTasksTeamsTo }) => {
+    const all = await ctx.db.query("workspaces").collect();
+    const target = all.find((w) => w.name.toLowerCase() === name.toLowerCase());
+    if (!target) throw new Error(`Workspace "${name}" not found`);
+
+    let destId: any = undefined;
+    if (migrateTasksTeamsTo) {
+      const dest = all.find(
+        (w) => w.name.toLowerCase() === migrateTasksTeamsTo.toLowerCase(),
+      );
+      if (!dest) throw new Error(`Workspace "${migrateTasksTeamsTo}" not found`);
+      destId = dest._id;
+    }
+
+    const tasks = await ctx.db.query("tasks").collect();
+    let tasksMoved = 0;
+    for (const t of tasks) {
+      if (t.workspaceId === target._id) {
+        await ctx.db.patch(t._id, { workspaceId: destId });
+        tasksMoved++;
+      }
+    }
+
+    const teams = await ctx.db.query("teams").collect();
+    let teamsMoved = 0;
+    for (const t of teams) {
+      if (t.workspaceId === target._id) {
+        await ctx.db.patch(t._id, { workspaceId: destId });
+        teamsMoved++;
+      }
+    }
+
+    const tags = await ctx.db.query("userTags").collect();
+    let tagsMoved = 0;
+    for (const t of tags) {
+      if (t.workspaceId === target._id) {
+        await ctx.db.patch(t._id, { workspaceId: destId });
+        tagsMoved++;
+      }
+    }
+
+    const lists = await ctx.db.query("lists").collect();
+    let listsMoved = 0;
+    for (const l of lists) {
+      if (l.workspaceId === target._id) {
+        await ctx.db.patch(l._id, { workspaceId: destId });
+        listsMoved++;
+      }
+    }
+
+    const members = await ctx.db
+      .query("workspaceMembers")
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", target._id))
+      .collect();
+    for (const m of members) await ctx.db.delete(m._id);
+
+    await ctx.db.delete(target._id);
+
+    return { tasksMoved, teamsMoved, tagsMoved, listsMoved, deletedMembers: members.length };
+  },
+});
+
+// Creates a brand-new user + password account (via Convex Auth) and adds
+// them straight into the given workspace, with no membership anywhere else.
+// CLI-only — never exposed to the client.
+export const createWorkspaceUser = action({
+  args: {
+    email: v.string(),
+    username: v.string(),
+    password: v.string(),
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, { email, username, password, workspaceId }) => {
+    const { user } = await createAccount(ctx, {
+      provider: "password",
+      account: { id: email, secret: password },
+      profile: { email },
+    });
+    await ctx.runMutation(internal.adminOps.finishUserSetup, {
+      userId: user._id,
+      username,
+      workspaceId,
+    });
+    return { userId: user._id };
+  },
+});
+
+export const finishUserSetup = internalMutation({
+  args: {
+    userId: v.id("users"),
+    username: v.string(),
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, { userId, username, workspaceId }) => {
+    const existing = await ctx.db
+      .query("profiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .unique();
+    if (existing) {
+      await ctx.db.patch(existing._id, { username });
+    } else {
+      await ctx.db.insert("profiles", { userId, username });
+    }
+    const wsMember = await ctx.db
+      .query("workspaceMembers")
+      .withIndex("by_workspace_user", (q) =>
+        q.eq("workspaceId", workspaceId).eq("userId", userId),
+      )
+      .unique();
+    if (!wsMember) {
+      await ctx.db.insert("workspaceMembers", { workspaceId, userId });
+    }
   },
 });

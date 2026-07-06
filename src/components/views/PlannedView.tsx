@@ -37,7 +37,8 @@ export default function PlannedView({
   });
   const createTask = useMutation(api.tasks.createTask);
   const lists = useQuery(api.lists.listMyLists, workspaceId ? { workspaceId } : {}) ?? [];
-  const allTags = useQuery(api.tasks.listAllTags) ?? [];
+  const allTags =
+    useQuery(api.tasks.listAllTags, workspaceId ? { workspaceId } : {}) ?? [];
 
   const [filterListId, setFilterListId] = useState<string>("");
   const [filterTag, setFilterTag] = useState<string>("");
@@ -135,6 +136,7 @@ export default function PlannedView({
       headerExtra={filterBar}
       composer={
         <Composer
+          workspaceId={workspaceId}
           placeholder="Añadir una tarea con vencimiento"
           defaultDueDate={today}
           onCreate={(d) =>

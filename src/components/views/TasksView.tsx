@@ -47,6 +47,7 @@ export default function TasksView({
       workspaceId={workspaceId}
       composer={
         <Composer
+          workspaceId={workspaceId}
           placeholder="Añadir una tarea"
           onCreate={(d) =>
             createTask({

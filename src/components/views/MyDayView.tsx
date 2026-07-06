@@ -43,6 +43,7 @@ export default function MyDayView({
       emptyText="Aquí aparecerán las tareas que planees para hoy. Añade una abajo o pulsa el sol en cualquier tarea."
       composer={
         <Composer
+          workspaceId={workspaceId}
           placeholder="Añadir una tarea a Mi día"
           onCreate={(d) =>
             createTask({
