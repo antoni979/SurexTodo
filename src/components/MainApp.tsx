@@ -46,9 +46,24 @@ export default function MainApp({
   });
   const workspaces = useQuery(api.workspaces.listMyWorkspaces) ?? [];
 
-  // If no workspace saved yet and workspaces exist, auto-select the first one
+  // Auto-seleccionar / auto-corregir el entorno una vez cargada la lista.
   useEffect(() => {
-    if (workspaceId === null && workspaces.length > 0 && !localStorage.getItem("defaultWorkspace")) {
+    if (workspaces.length === 0) return;
+    // Caso 1: no hay entorno seleccionado → coger el primero.
+    if (workspaceId === null) {
+      const first = workspaces[0]._id;
+      setWorkspaceId(first);
+      localStorage.setItem("defaultWorkspace", first);
+      return;
+    }
+    // Caso 2: el entorno guardado ya no es válido (el usuario no es miembro,
+    // p.ej. localStorage heredado de otra cuenta) → corregir al primero suyo.
+    if (!workspaces.some((w) => w._id === workspaceId)) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        "[SUREX] workspaceId guardado no válido para este usuario; corrigiendo.",
+        { guardado: workspaceId, disponibles: workspaces.map((w) => w._id) },
+      );
       const first = workspaces[0]._id;
       setWorkspaceId(first);
       localStorage.setItem("defaultWorkspace", first);
@@ -127,6 +142,39 @@ export default function MainApp({
         <MenuIcon size={22} />
       </button>
       <main className="content">
+        {localStorage.getItem("surexDebug") === "1" && (
+          <div
+            style={{
+              background: "#fef3c7",
+              border: "1px solid #f59e0b",
+              borderRadius: 8,
+              padding: "8px 12px",
+              margin: "8px 12px",
+              fontSize: 12,
+              fontFamily: "monospace",
+              color: "#78350f",
+              lineHeight: 1.6,
+            }}
+          >
+            <strong>DEBUG</strong> · user: {username} ({userId.slice(0, 8)}…)
+            <br />
+            workspaceId actual:{" "}
+            <b>
+              {workspaceId
+                ? `${workspaces.find((w) => w._id === workspaceId)?.name ?? "??"} (${workspaceId.slice(0, 8)}…)`
+                : "NULL (Personal)"}
+            </b>
+            {workspaceId &&
+              !workspaces.some((w) => w._id === workspaceId) && (
+                <span style={{ color: "#b91c1c" }}>
+                  {" "}
+                  ⚠️ NO ERES MIEMBRO DE ESTE ENTORNO
+                </span>
+              )}
+            <br />
+            entornos: {workspaces.map((w) => w.name).join(", ") || "(ninguno)"}
+          </div>
+        )}
         {view.kind === "myday" && (
           <MyDayView today={today} onOpenProject={openProject} workspaceId={workspaceId} />
         )}

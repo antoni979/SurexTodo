@@ -56,15 +56,42 @@ export default function Composer({
     if (!title.trim() || busy) return;
     setBusy(true);
     setError(null);
+    const t0 = performance.now();
+    // eslint-disable-next-line no-console
+    console.log("[SUREX] crear tarea →", {
+      title: title.trim(),
+      workspaceId: workspaceId ?? "(null/Personal)",
+      dueDate: dueDate || "(sin fecha)",
+    });
     try {
-      await onCreate({
-        title: title.trim(),
-        priority,
-        dueDate: dueDate || undefined,
-        assigneeId: assigneeId ? (assigneeId as Id<"users">) : undefined,
-        recurrence,
-        tags: tags.length > 0 ? tags : undefined,
-      });
+      // Watchdog: si la mutación no responde en 8s, mostramos error en vez de
+      // quedarnos colgados en silencio (típico de WS bloqueado o sesión caída).
+      const watchdog = new Promise<never>((_, reject) =>
+        setTimeout(
+          () =>
+            reject(
+              new Error(
+                "Sin respuesta del servidor (8s). Posible bloqueo de red, PWA cacheada o sesión caducada. Prueba en una ventana de incógnito.",
+              ),
+            ),
+          8000,
+        ),
+      );
+      await Promise.race([
+        onCreate({
+          title: title.trim(),
+          priority,
+          dueDate: dueDate || undefined,
+          assigneeId: assigneeId ? (assigneeId as Id<"users">) : undefined,
+          recurrence,
+          tags: tags.length > 0 ? tags : undefined,
+        }),
+        watchdog,
+      ]);
+      // eslint-disable-next-line no-console
+      console.log(
+        `[SUREX] tarea creada OK en ${Math.round(performance.now() - t0)}ms`,
+      );
       // Reset
       setTitle("");
       setPriority("media");
@@ -74,6 +101,8 @@ export default function Composer({
       setTags([]);
       setTagInput("");
     } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("[SUREX] fallo al crear tarea:", err);
       setError(err instanceof Error ? err.message : "No se pudo crear");
     } finally {
       setBusy(false);
