@@ -13,7 +13,9 @@ import {
   LogoutIcon,
   FolderIcon,
   BellIcon,
+  SettingsIcon,
 } from "./icons";
+import SettingsModal from "./SettingsModal";
 import { PROJECT_STATUS_META } from "../util";
 import { LIST_COLORS, DEFAULT_COLOR } from "../../convex/lists";
 import NewTeamModal from "./NewTeamModal";
@@ -49,6 +51,7 @@ export default function Sidebar({
   const { signOut } = useAuthActions();
   const [showNewTeam, setShowNewTeam] = useState(false);
   const [showNotifHelp, setShowNotifHelp] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [showNewList, setShowNewList] = useState(false);
   const [newListName, setNewListName] = useState("");
   const [newListColor, setNewListColor] = useState(DEFAULT_COLOR);
@@ -358,12 +361,26 @@ export default function Sidebar({
         )}
         <button
           className="icon-btn"
+          title="Configuración"
+          onClick={() => setShowSettings(true)}
+        >
+          <SettingsIcon size={18} />
+        </button>
+        <button
+          className="icon-btn"
           title="Cerrar sesión"
           onClick={() => signOut()}
         >
           <LogoutIcon size={18} />
         </button>
       </div>
+
+      {showSettings && (
+        <SettingsModal
+          onClose={() => setShowSettings(false)}
+          onSelectDefaultView={onSelect}
+        />
+      )}
 
       {showNewTeam && (
         <NewTeamModal

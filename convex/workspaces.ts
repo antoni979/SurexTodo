@@ -10,7 +10,7 @@ async function requireUser(ctx: QueryCtx | MutationCtx) {
   return userId;
 }
 
-async function isMember(
+export async function isWorkspaceMember(
   ctx: QueryCtx | MutationCtx,
   workspaceId: Id<"workspaces">,
   userId: Id<"users">,
@@ -23,6 +23,9 @@ async function isMember(
     .unique();
   return row !== null;
 }
+
+// Local alias kept for existing call-sites in this file.
+const isMember = isWorkspaceMember;
 
 export const listMyWorkspaces = query({
   args: {},

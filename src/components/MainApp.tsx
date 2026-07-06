@@ -32,7 +32,13 @@ export default function MainApp({
   username: string;
   userId: Id<"users">;
 }) {
-  const [view, setView] = useState<View>({ kind: "myday" });
+  const [view, setView] = useState<View>(() => {
+    const saved = localStorage.getItem("defaultView");
+    if (saved === "planned") return { kind: "planned" };
+    if (saved === "tasks") return { kind: "tasks" };
+    if (saved === "calendar") return { kind: "calendar" };
+    return { kind: "myday" };
+  });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [workspaceId, setWorkspaceId] = useState<Id<"workspaces"> | null>(() => {
     const saved = localStorage.getItem("defaultWorkspace");

@@ -2,6 +2,7 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { QueryCtx, MutationCtx } from "./_generated/server";
+import { isWorkspaceMember } from "./workspaces";
 
 export const LIST_COLORS = [
   "#ef4444", // rojo
@@ -29,6 +30,8 @@ export const listMyLists = query({
   handler: async (ctx, { workspaceId }) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
+    if (workspaceId && !(await isWorkspaceMember(ctx, workspaceId, userId)))
+      return [];
     const filterWS = workspaceId ?? null;
 
     const rows = await ctx.db
@@ -58,6 +61,8 @@ export const createList = mutation({
   },
   handler: async (ctx, { name, color, workspaceId }) => {
     const userId = await requireUser(ctx);
+    if (workspaceId && !(await isWorkspaceMember(ctx, workspaceId, userId)))
+      throw new Error("No perteneces a ese entorno");
     const clean = name.trim();
     if (!clean) throw new Error("La lista necesita un nombre");
     return await ctx.db.insert("lists", {

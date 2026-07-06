@@ -5,6 +5,7 @@ import { QueryCtx, MutationCtx } from "./_generated/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { projectStatusValidator } from "./schema";
 import { assertAccess } from "./tasks";
+import { isWorkspaceMember } from "./workspaces";
 
 async function requireUser(ctx: QueryCtx | MutationCtx) {
   const userId = await getAuthUserId(ctx);
@@ -62,6 +63,8 @@ export const listMyProjects = query({
   handler: async (ctx, { workspaceId }) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
+    if (workspaceId && !(await isWorkspaceMember(ctx, workspaceId, userId)))
+      return [];
 
     const filterWS = workspaceId ?? null;
 

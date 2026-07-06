@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { QueryCtx, MutationCtx } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { isWorkspaceMember } from "./workspaces";
 
 async function requireUser(ctx: QueryCtx | MutationCtx) {
   const userId = await getAuthUserId(ctx);
@@ -29,6 +30,8 @@ export const listMyTeams = query({
   handler: async (ctx, { workspaceId }) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
+    if (workspaceId && !(await isWorkspaceMember(ctx, workspaceId, userId)))
+      return [];
     const memberships = await ctx.db
       .query("teamMembers")
       .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -50,6 +53,8 @@ export const createTeam = mutation({
   args: { name: v.string(), workspaceId: v.optional(v.id("workspaces")) },
   handler: async (ctx, { name, workspaceId }) => {
     const userId = await requireUser(ctx);
+    if (workspaceId && !(await isWorkspaceMember(ctx, workspaceId, userId)))
+      throw new Error("No perteneces a ese entorno");
     const clean = name.trim();
     if (!clean) throw new Error("El equipo necesita un nombre");
     const teamId = await ctx.db.insert("teams", {

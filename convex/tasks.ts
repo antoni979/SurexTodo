@@ -8,6 +8,7 @@ import {
   recurrenceValidator,
   kanbanStatusValidator,
 } from "./schema";
+import { isWorkspaceMember } from "./workspaces";
 
 type Recurrence = {
   type: "daily" | "weekdays" | "weekly" | "monthly" | "custom";
@@ -211,6 +212,9 @@ export const listAllTags = query({
   handler: async (ctx, { workspaceId }) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
+    // Aislamiento: si pide un entorno del que no es miembro, nada.
+    if (workspaceId && !(await isWorkspaceMember(ctx, workspaceId, userId)))
+      return [];
     const filterWS = workspaceId ?? null;
 
     // Explicit user tag store (persists even when removed from tasks)
@@ -297,6 +301,8 @@ export const listPersonal = query({
   handler: async (ctx, { today, workspaceId }) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
+    if (workspaceId && !(await isWorkspaceMember(ctx, workspaceId, userId)))
+      return [];
     const all = await ctx.db
       .query("tasks")
       .withIndex("by_creator", (q) => q.eq("creatorId", userId))
@@ -362,6 +368,8 @@ export const listMyDay = query({
   handler: async (ctx, { today, workspaceId }) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
+    if (workspaceId && !(await isWorkspaceMember(ctx, workspaceId, userId)))
+      return [];
     const rows = await ctx.db
       .query("myDay")
       .withIndex("by_user_date", (q) =>
@@ -444,6 +452,8 @@ export const listPlanned = query({
   handler: async (ctx, { today, workspaceId }) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
+    if (workspaceId && !(await isWorkspaceMember(ctx, workspaceId, userId)))
+      return [];
 
     const filterWS = workspaceId ?? null;
 
@@ -531,6 +541,8 @@ export const createTask = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await requireUser(ctx);
+    if (args.workspaceId && !(await isWorkspaceMember(ctx, args.workspaceId, userId)))
+      throw new Error("No perteneces a ese entorno");
     const title = args.title.trim();
     if (!title) throw new Error("La tarea necesita un título");
 
