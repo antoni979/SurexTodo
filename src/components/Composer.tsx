@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -48,15 +48,23 @@ export default function Composer({
   const [tagFocused, setTagFocused] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Ref al input real: leemos el título del DOM al enviar, por si una extensión
+  // del navegador (Grammarly, traductores, gestores de formularios…) modifica
+  // el campo sin disparar el onChange de React y el estado queda vacío.
+  const titleRef = useRef<HTMLInputElement>(null);
 
   const allTags =
     useQuery(api.tasks.listAllTags, workspaceId ? { workspaceId } : {}) ?? [];
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    slog("submit disparado", { title, busy });
-    if (!title.trim()) {
-      slog("corte: título vacío");
+    // Fuente de verdad = valor real del input en el DOM; el estado de React es
+    // solo el respaldo (puede quedar desincronizado por extensiones).
+    const domTitle = titleRef.current?.value ?? "";
+    const finalTitle = (domTitle || title).trim();
+    slog("submit disparado", { estado: title, dom: domTitle, busy });
+    if (!finalTitle) {
+      slog("corte: título vacío (ni estado ni DOM)");
       return;
     }
     if (busy) {
@@ -67,7 +75,7 @@ export default function Composer({
     setError(null);
     const t0 = performance.now();
     slog("crear tarea →", {
-      title: title.trim(),
+      title: finalTitle,
       workspaceId: workspaceId ?? "(null/Personal)",
       dueDate: dueDate || "(sin fecha)",
     });
@@ -87,7 +95,7 @@ export default function Composer({
       );
       await Promise.race([
         onCreate({
-          title: title.trim(),
+          title: finalTitle,
           priority,
           dueDate: dueDate || undefined,
           assigneeId: assigneeId ? (assigneeId as Id<"users">) : undefined,
@@ -97,8 +105,9 @@ export default function Composer({
         watchdog,
       ]);
       slog(`tarea creada OK en ${Math.round(performance.now() - t0)}ms`);
-      // Reset
+      // Reset (estado + DOM, por si el input está gestionado por una extensión)
       setTitle("");
+      if (titleRef.current) titleRef.current.value = "";
       setPriority("media");
       setDueDate(defaultDueDate ?? "");
       setAssigneeId("");
@@ -140,9 +149,12 @@ export default function Composer({
           <PlusIcon size={18} />
         </span>
         <input
+          ref={titleRef}
           className="composer-input"
           type="text"
-          value={title}
+          // No controlado a propósito: si fuese value={title}, React revertiría
+          // el texto que una extensión inyecte en el DOM. Leemos por ref.
+          defaultValue=""
           onChange={(e) => setTitle(e.target.value)}
           placeholder={placeholder}
         />
