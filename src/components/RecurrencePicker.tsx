@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { type Recurrence, type RecurrenceType, WEEKDAYS } from "../util";
 
 const OPTIONS: { value: string; label: string }[] = [
@@ -9,8 +10,14 @@ const OPTIONS: { value: string; label: string }[] = [
   { value: "custom", label: "Días concretos…" },
 ];
 
-// Types that support an interval multiplier
 const INTERVAL_TYPES: RecurrenceType[] = ["daily", "weekly", "monthly"];
+
+const UNIT_LABEL: Record<string, [string, string]> = {
+  daily: ["día", "días"],
+  weekly: ["semana", "semanas"],
+  monthly: ["mes", "meses"],
+  custom: ["semana", "semanas"],
+};
 
 export default function RecurrencePicker({
   value,
@@ -20,19 +27,35 @@ export default function RecurrencePicker({
   onChange: (r: Recurrence | undefined) => void;
 }) {
   const current = value?.type ?? "none";
-  const interval = value?.interval ?? 1;
-  const showInterval = value && INTERVAL_TYPES.includes(value.type);
+  // Local interval so the number input responds instantly without waiting for Convex
+  const [localInterval, setLocalInterval] = useState<number>(value?.interval ?? 1);
+
+  // Sync local interval if parent value changes (e.g. initial load)
+  useEffect(() => {
+    setLocalInterval(value?.interval ?? 1);
+  }, [value?.interval]);
+
+  const showInterval = value !== undefined && INTERVAL_TYPES.includes(value.type);
+  const [sing, plur] = UNIT_LABEL[current] ?? ["vez", "veces"];
+  const unitLabel = localInterval === 1 ? sing : plur;
 
   function changeType(t: string) {
-    if (t === "none") onChange(undefined);
-    else if (t === "custom")
-      onChange({ type: "custom", days: value?.days ?? [], interval: 1 });
-    else onChange({ type: t as RecurrenceType, interval: value?.interval ?? 1 });
+    if (t === "none") {
+      onChange(undefined);
+    } else if (t === "custom") {
+      const iv = localInterval;
+      onChange({ type: "custom", days: value?.days ?? [], interval: iv });
+    } else {
+      const iv = localInterval;
+      onChange({ type: t as RecurrenceType, interval: iv });
+    }
   }
 
-  function changeInterval(n: number) {
+  function commitInterval(n: number) {
+    const safe = Math.max(1, Math.min(99, isNaN(n) ? 1 : n));
+    setLocalInterval(safe);
     if (!value) return;
-    onChange({ ...value, interval: Math.max(1, n) });
+    onChange({ ...value, interval: safe });
   }
 
   function toggleDay(n: number) {
@@ -40,13 +63,8 @@ export default function RecurrencePicker({
     const next = days.includes(n)
       ? days.filter((d) => d !== n)
       : [...days, n];
-    onChange({ type: "custom", days: next, interval: value?.interval ?? 1 });
+    onChange({ type: "custom", days: next, interval: localInterval });
   }
-
-  const unitLabel =
-    current === "daily" ? (interval === 1 ? "día" : "días") :
-    current === "weekly" ? (interval === 1 ? "semana" : "semanas") :
-    current === "monthly" ? (interval === 1 ? "mes" : "meses") : "";
 
   return (
     <div className="recur-picker">
@@ -69,9 +87,19 @@ export default function RecurrencePicker({
             type="number"
             min={1}
             max={99}
-            value={interval}
+            value={localInterval}
             className="recur-interval-input"
-            onChange={(e) => changeInterval(Number(e.target.value))}
+            // Update local state on every keystroke for responsive feel
+            onChange={(e) => {
+              const n = parseInt(e.target.value, 10);
+              if (!isNaN(n)) setLocalInterval(n);
+              else setLocalInterval(0); // allow clearing to retype
+            }}
+            // Commit to Convex only when user leaves the field or presses Enter
+            onBlur={(e) => commitInterval(parseInt(e.target.value, 10))}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitInterval(localInterval);
+            }}
           />
           <span className="recur-interval-unit">{unitLabel}</span>
         </div>
@@ -99,13 +127,18 @@ export default function RecurrencePicker({
               type="number"
               min={1}
               max={99}
-              value={interval}
+              value={localInterval}
               className="recur-interval-input"
-              onChange={(e) => changeInterval(Number(e.target.value))}
+              onChange={(e) => {
+                const n = parseInt(e.target.value, 10);
+                if (!isNaN(n)) setLocalInterval(n);
+              }}
+              onBlur={(e) => commitInterval(parseInt(e.target.value, 10))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitInterval(localInterval);
+              }}
             />
-            <span className="recur-interval-unit">
-              {interval === 1 ? "semana" : "semanas"}
-            </span>
+            <span className="recur-interval-unit">{unitLabel}</span>
           </div>
         </div>
       )}
