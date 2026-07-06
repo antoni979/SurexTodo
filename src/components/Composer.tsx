@@ -7,6 +7,7 @@ import {
   PRIORITY_META,
   type Priority,
   type Recurrence,
+  slog,
 } from "../util";
 import { PlusIcon } from "./icons";
 import RecurrencePicker from "./RecurrencePicker";
@@ -53,12 +54,19 @@ export default function Composer({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!title.trim() || busy) return;
+    slog("submit disparado", { title, busy });
+    if (!title.trim()) {
+      slog("corte: título vacío");
+      return;
+    }
+    if (busy) {
+      slog("corte: ocupado (busy=true)");
+      return;
+    }
     setBusy(true);
     setError(null);
     const t0 = performance.now();
-    // eslint-disable-next-line no-console
-    console.log("[SUREX] crear tarea →", {
+    slog("crear tarea →", {
       title: title.trim(),
       workspaceId: workspaceId ?? "(null/Personal)",
       dueDate: dueDate || "(sin fecha)",
@@ -88,10 +96,7 @@ export default function Composer({
         }),
         watchdog,
       ]);
-      // eslint-disable-next-line no-console
-      console.log(
-        `[SUREX] tarea creada OK en ${Math.round(performance.now() - t0)}ms`,
-      );
+      slog(`tarea creada OK en ${Math.round(performance.now() - t0)}ms`);
       // Reset
       setTitle("");
       setPriority("media");
@@ -101,8 +106,7 @@ export default function Composer({
       setTags([]);
       setTagInput("");
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error("[SUREX] fallo al crear tarea:", err);
+      slog("FALLO al crear", err instanceof Error ? err.message : String(err));
       setError(err instanceof Error ? err.message : "No se pudo crear");
     } finally {
       setBusy(false);
@@ -142,7 +146,12 @@ export default function Composer({
           onChange={(e) => setTitle(e.target.value)}
           placeholder={placeholder}
         />
-        <button type="submit" className="btn-primary btn-sm" disabled={busy}>
+        <button
+          type="submit"
+          className="btn-primary btn-sm"
+          disabled={busy}
+          onClick={() => slog("clic en Agregar")}
+        >
           Agregar
         </button>
       </div>

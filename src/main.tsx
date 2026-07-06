@@ -15,7 +15,7 @@ if (!convexUrl) {
 
 // Marca de build para diagnóstico remoto. Si en la consola de antonio NO
 // aparece esta línea (o el número es viejo), está corriendo una build cacheada.
-export const BUILD_ID = "2026-07-06-robust";
+export const BUILD_ID = "2026-07-06-eventlog";
 // eslint-disable-next-line no-console
 console.log(
   `%c[SUREX] build ${BUILD_ID} · convex ${convexUrl}`,

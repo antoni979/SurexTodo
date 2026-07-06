@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { localToday } from "../util";
+import { localToday, surexEvents } from "../util";
 import { useTaskNotifications } from "../hooks/useTaskNotifications";
 import Sidebar from "./Sidebar";
 import MyDayView from "./views/MyDayView";
@@ -82,6 +82,15 @@ export default function MainApp({
     }
   }, [workspacesLoading, workspaceId, workspacePref]);
   const [today, setToday] = useState(() => localToday());
+
+  // Refresco del panel DEBUG (para ver el log de eventos en vivo).
+  const debugOn = localStorage.getItem("surexDebug") === "1";
+  const [, setDebugTick] = useState(0);
+  useEffect(() => {
+    if (!debugOn) return;
+    const id = setInterval(() => setDebugTick((n) => n + 1), 800);
+    return () => clearInterval(id);
+  }, [debugOn]);
 
   useEffect(() => {
     function msUntilMidnight() {
@@ -185,6 +194,26 @@ export default function MainApp({
               )}
             <br />
             entornos: {workspaces.map((w) => w.name).join(", ") || "(ninguno)"}
+            <div
+              style={{
+                marginTop: 6,
+                paddingTop: 6,
+                borderTop: "1px dashed #f59e0b",
+                maxHeight: 160,
+                overflowY: "auto",
+              }}
+            >
+              <strong>eventos (pulsa Agregar):</strong>
+              {surexEvents.length === 0 && <div>— sin eventos aún —</div>}
+              {surexEvents
+                .slice()
+                .reverse()
+                .map((ev, i) => (
+                  <div key={surexEvents.length - i}>
+                    {new Date(ev.t).toLocaleTimeString("es-ES")} · {ev.msg}
+                  </div>
+                ))}
+            </div>
           </div>
         )}
         {workspacesLoading ? (
