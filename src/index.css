@@ -2784,3 +2784,11 @@ input[type="date"]:hover::-webkit-calendar-picker-indicator {
   margin-top: 14px;
   width: 100%;
 }
+
+/* ---------- gate de carga de entornos ---------- */
+.ws-loading {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--text-soft);
+  font-size: 14px;
+}

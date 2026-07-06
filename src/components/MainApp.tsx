@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -40,35 +40,47 @@ export default function MainApp({
     return { kind: "myday" };
   });
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [workspaceId, setWorkspaceId] = useState<Id<"workspaces"> | null>(() => {
-    const saved = localStorage.getItem("defaultWorkspace");
-    return saved ? (saved as Id<"workspaces">) : null;
-  });
-  const workspaces = useQuery(api.workspaces.listMyWorkspaces) ?? [];
+  // Preferencia del usuario (puede quedar obsoleta o ser de otra cuenta).
+  const [workspacePref, setWorkspacePref] = useState<Id<"workspaces"> | null>(
+    () => {
+      const saved = localStorage.getItem("defaultWorkspace");
+      return saved ? (saved as Id<"workspaces">) : null;
+    },
+  );
+  const workspacesResult = useQuery(api.workspaces.listMyWorkspaces);
+  const workspacesLoading = workspacesResult === undefined;
+  const workspaces = workspacesResult ?? [];
 
-  // Auto-seleccionar / auto-corregir el entorno una vez cargada la lista.
+  // ── FUENTE ÚNICA DE VERDAD ──────────────────────────────────────────────
+  // El entorno "efectivo" está GARANTIZADO como uno del que el usuario es
+  // miembro (o null si no tiene ninguno). Es lo único que se pasa a las
+  // queries y a crear tareas, así que es imposible operar sobre un entorno
+  // ajeno aunque el localStorage esté corrupto o heredado de otra cuenta.
+  const workspaceId: Id<"workspaces"> | null = useMemo(() => {
+    if (workspaces.length === 0) return null; // solo espacio personal
+    if (workspacePref && workspaces.some((w) => w._id === workspacePref)) {
+      return workspacePref;
+    }
+    return workspaces[0]._id; // fallback a un entorno válido
+  }, [workspaces, workspacePref]);
+
+  // Mantener preferencia y localStorage sincronizados con lo efectivo, sin
+  // pisar nada mientras aún carga la lista de entornos.
   useEffect(() => {
-    if (workspaces.length === 0) return;
-    // Caso 1: no hay entorno seleccionado → coger el primero.
-    if (workspaceId === null) {
-      const first = workspaces[0]._id;
-      setWorkspaceId(first);
-      localStorage.setItem("defaultWorkspace", first);
-      return;
+    if (workspacesLoading) return;
+    if (workspaceId !== workspacePref) {
+      if (workspacePref !== null && workspaceId !== null) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          "[SUREX] entorno guardado no válido para este usuario; corregido.",
+          { guardado: workspacePref, usando: workspaceId },
+        );
+      }
+      setWorkspacePref(workspaceId);
+      if (workspaceId) localStorage.setItem("defaultWorkspace", workspaceId);
+      else localStorage.removeItem("defaultWorkspace");
     }
-    // Caso 2: el entorno guardado ya no es válido (el usuario no es miembro,
-    // p.ej. localStorage heredado de otra cuenta) → corregir al primero suyo.
-    if (!workspaces.some((w) => w._id === workspaceId)) {
-      // eslint-disable-next-line no-console
-      console.warn(
-        "[SUREX] workspaceId guardado no válido para este usuario; corrigiendo.",
-        { guardado: workspaceId, disponibles: workspaces.map((w) => w._id) },
-      );
-      const first = workspaces[0]._id;
-      setWorkspaceId(first);
-      localStorage.setItem("defaultWorkspace", first);
-    }
-  }, [workspaces, workspaceId]);
+  }, [workspacesLoading, workspaceId, workspacePref]);
   const [today, setToday] = useState(() => localToday());
 
   useEffect(() => {
@@ -119,7 +131,7 @@ export default function MainApp({
         open={sidebarOpen}
         workspaceId={workspaceId}
         onWorkspaceChange={(id) => {
-          setWorkspaceId(id);
+          setWorkspacePref(id);
           if (id) localStorage.setItem("defaultWorkspace", id);
           else localStorage.removeItem("defaultWorkspace");
         }}
@@ -175,6 +187,10 @@ export default function MainApp({
             entornos: {workspaces.map((w) => w.name).join(", ") || "(ninguno)"}
           </div>
         )}
+        {workspacesLoading ? (
+          <div className="ws-loading">Cargando tu espacio…</div>
+        ) : (
+        <>
         {view.kind === "myday" && (
           <MyDayView today={today} onOpenProject={openProject} workspaceId={workspaceId} />
         )}
@@ -208,6 +224,8 @@ export default function MainApp({
             onOpenProject={openProject}
             workspaceId={workspaceId}
           />
+        )}
+        </>
         )}
       </main>
     </div>
