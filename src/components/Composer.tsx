@@ -62,7 +62,20 @@ export default function Composer({
     // solo el respaldo (puede quedar desincronizado por extensiones).
     const domTitle = titleRef.current?.value ?? "";
     const finalTitle = (domTitle || title).trim();
-    slog("submit disparado", { estado: title, dom: domTitle, busy });
+    // Diagnóstico estructural: ¿cuántos inputs de composer hay?, ¿qué valor
+    // tiene cada uno?, ¿dónde estaba el foco al pulsar Agregar?
+    const inputs = Array.from(
+      document.querySelectorAll<HTMLInputElement>(".composer-input"),
+    );
+    const ae = document.activeElement as HTMLElement | null;
+    slog("submit disparado", {
+      estado: title,
+      dom: domTitle,
+      busy,
+      nInputs: inputs.length,
+      valores: inputs.map((i) => i.value),
+      foco: ae ? `${ae.tagName}.${ae.className}` : "(ninguno)",
+    });
     if (!finalTitle) {
       slog("corte: título vacío (ni estado ni DOM)");
       return;
@@ -156,6 +169,7 @@ export default function Composer({
           // el texto que una extensión inyecte en el DOM. Leemos por ref.
           defaultValue=""
           onChange={(e) => setTitle(e.target.value)}
+          onInput={(e) => slog("tecla en título", (e.target as HTMLInputElement).value)}
           placeholder={placeholder}
         />
         <button
