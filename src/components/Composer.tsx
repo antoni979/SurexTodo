@@ -61,7 +61,11 @@ export default function Composer({
     // Fuente de verdad = valor real del input en el DOM; el estado de React es
     // solo el respaldo (puede quedar desincronizado por extensiones).
     const domTitle = titleRef.current?.value ?? "";
-    const finalTitle = (domTitle || title).trim();
+    // Si el título está vacío pero el usuario escribió en el campo de etiqueta
+    // (confusión habitual: es el otro campo de texto visible), usamos ese
+    // texto como título de la tarea — es claramente su intención.
+    const finalTitle = (domTitle || title || tagInput).trim();
+    const usedTagAsTitle = !(domTitle || title).trim() && !!tagInput.trim();
     // Diagnóstico estructural: ¿cuántos inputs de composer hay?, ¿qué valor
     // tiene cada uno?, ¿dónde estaba el foco al pulsar Agregar?
     const inputs = Array.from(
@@ -87,6 +91,7 @@ export default function Composer({
     setBusy(true);
     setError(null);
     const t0 = performance.now();
+    if (usedTagAsTitle) slog("nota: texto de etiqueta usado como título");
     slog("crear tarea →", {
       title: finalTitle,
       workspaceId: workspaceId ?? "(null/Personal)",
@@ -272,7 +277,7 @@ export default function Composer({
             type="text"
             className="tag-input"
             value={tagInput}
-            placeholder="Etiqueta…"
+            placeholder="🏷 etiqueta (opcional)"
             autoComplete="off"
             onChange={(e) => setTagInput(e.target.value)}
             onFocus={() => setTagFocused(true)}

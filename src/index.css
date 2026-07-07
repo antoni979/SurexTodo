@@ -2792,3 +2792,14 @@ input[type="date"]:hover::-webkit-calendar-picker-indicator {
   color: var(--text-soft);
   font-size: 14px;
 }
+
+/* El campo de etiqueta del composer es secundario: compacto y punteado para
+   que no se confunda con el campo del título de la tarea. */
+.composer-tags .tag-input {
+  max-width: 190px;
+  border-style: dashed;
+  background: transparent;
+  font-size: 12px;
+  padding: 4px 8px;
+  color: var(--text-soft);
+}
