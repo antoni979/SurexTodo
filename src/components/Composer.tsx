@@ -135,6 +135,34 @@ export default function Composer({
     }
   }
 
+  // Vía de emergencia: crear con el diálogo nativo del navegador. Inmune a
+  // extensiones/overlays/foco que puedan estar rompiendo el input de la página.
+  async function quickAdd() {
+    const val = window.prompt("Título de la nueva tarea:");
+    if (val === null) return; // canceló
+    const t = val.trim();
+    if (!t || busy) return;
+    setBusy(true);
+    setError(null);
+    slog("quickAdd (prompt) →", { title: t });
+    try {
+      await onCreate({
+        title: t,
+        priority,
+        dueDate: dueDate || undefined,
+        assigneeId: assigneeId ? (assigneeId as Id<"users">) : undefined,
+        recurrence,
+        tags: tags.length > 0 ? tags : undefined,
+      });
+      slog("quickAdd OK");
+    } catch (err) {
+      slog("quickAdd FALLO", err instanceof Error ? err.message : String(err));
+      setError(err instanceof Error ? err.message : "No se pudo crear");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function addTag(val: string) {
     const t = val.trim().replace(/,/g, "");
     if (!t || tags.includes(t)) return;
@@ -179,6 +207,15 @@ export default function Composer({
           onClick={() => slog("clic en Agregar")}
         >
           Agregar
+        </button>
+        <button
+          type="button"
+          className="btn-ghost btn-sm"
+          disabled={busy}
+          onClick={quickAdd}
+          title="Crear con el teclado del sistema (si el campo de arriba no responde)"
+        >
+          ✏️＋
         </button>
       </div>
       <div className="composer-options">
