@@ -7,7 +7,6 @@ import {
   PRIORITY_META,
   type Priority,
   type Recurrence,
-  slog,
 } from "../util";
 import { PlusIcon } from "./icons";
 import RecurrencePicker from "./RecurrencePicker";
@@ -49,8 +48,7 @@ export default function Composer({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Ref al input real: leemos el título del DOM al enviar, por si una extensión
-  // del navegador (Grammarly, traductores, gestores de formularios…) modifica
-  // el campo sin disparar el onChange de React y el estado queda vacío.
+  // del navegador modifica el campo sin disparar el onChange de React.
   const titleRef = useRef<HTMLInputElement>(null);
 
   const allTags =
@@ -58,56 +56,19 @@ export default function Composer({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    // Fuente de verdad = valor real del input en el DOM; el estado de React es
-    // solo el respaldo (puede quedar desincronizado por extensiones).
     const domTitle = titleRef.current?.value ?? "";
-    // Si el título está vacío pero el usuario escribió en el campo de etiqueta
-    // (confusión habitual: es el otro campo de texto visible), usamos ese
-    // texto como título de la tarea — es claramente su intención.
+    // Si el título está vacío pero el usuario escribió en el campo de
+    // etiqueta (confusión habitual con el otro input visible), usamos ese
+    // texto como título — es claramente su intención.
     const finalTitle = (domTitle || title || tagInput).trim();
-    const usedTagAsTitle = !(domTitle || title).trim() && !!tagInput.trim();
-    // Diagnóstico estructural: ¿cuántos inputs de composer hay?, ¿qué valor
-    // tiene cada uno?, ¿dónde estaba el foco al pulsar Agregar?
-    const inputs = Array.from(
-      document.querySelectorAll<HTMLInputElement>(".composer-input"),
-    );
-    const ae = document.activeElement as HTMLElement | null;
-    slog("submit disparado", {
-      estado: title,
-      dom: domTitle,
-      busy,
-      nInputs: inputs.length,
-      valores: inputs.map((i) => i.value),
-      foco: ae ? `${ae.tagName}.${ae.className}` : "(ninguno)",
-    });
-    if (!finalTitle) {
-      slog("corte: título vacío (ni estado ni DOM)");
-      return;
-    }
-    if (busy) {
-      slog("corte: ocupado (busy=true)");
-      return;
-    }
+    if (!finalTitle || busy) return;
     setBusy(true);
     setError(null);
-    const t0 = performance.now();
-    if (usedTagAsTitle) slog("nota: texto de etiqueta usado como título");
-    slog("crear tarea →", {
-      title: finalTitle,
-      workspaceId: workspaceId ?? "(null/Personal)",
-      dueDate: dueDate || "(sin fecha)",
-    });
     try {
-      // Watchdog: si la mutación no responde en 8s, mostramos error en vez de
-      // quedarnos colgados en silencio (típico de WS bloqueado o sesión caída).
+      // Watchdog: evita quedarse colgado en silencio si la red/sesión falla.
       const watchdog = new Promise<never>((_, reject) =>
         setTimeout(
-          () =>
-            reject(
-              new Error(
-                "Sin respuesta del servidor (8s). Posible bloqueo de red, PWA cacheada o sesión caducada. Prueba en una ventana de incógnito.",
-              ),
-            ),
+          () => reject(new Error("Sin respuesta del servidor. Comprueba tu conexión.")),
           8000,
         ),
       );
@@ -122,8 +83,7 @@ export default function Composer({
         }),
         watchdog,
       ]);
-      slog(`tarea creada OK en ${Math.round(performance.now() - t0)}ms`);
-      // Reset (estado + DOM, por si el input está gestionado por una extensión)
+      // Reset (estado + DOM)
       setTitle("");
       if (titleRef.current) titleRef.current.value = "";
       setPriority("media");
@@ -133,35 +93,6 @@ export default function Composer({
       setTags([]);
       setTagInput("");
     } catch (err) {
-      slog("FALLO al crear", err instanceof Error ? err.message : String(err));
-      setError(err instanceof Error ? err.message : "No se pudo crear");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  // Vía de emergencia: crear con el diálogo nativo del navegador. Inmune a
-  // extensiones/overlays/foco que puedan estar rompiendo el input de la página.
-  async function quickAdd() {
-    const val = window.prompt("Título de la nueva tarea:");
-    if (val === null) return; // canceló
-    const t = val.trim();
-    if (!t || busy) return;
-    setBusy(true);
-    setError(null);
-    slog("quickAdd (prompt) →", { title: t });
-    try {
-      await onCreate({
-        title: t,
-        priority,
-        dueDate: dueDate || undefined,
-        assigneeId: assigneeId ? (assigneeId as Id<"users">) : undefined,
-        recurrence,
-        tags: tags.length > 0 ? tags : undefined,
-      });
-      slog("quickAdd OK");
-    } catch (err) {
-      slog("quickAdd FALLO", err instanceof Error ? err.message : String(err));
       setError(err instanceof Error ? err.message : "No se pudo crear");
     } finally {
       setBusy(false);
@@ -202,25 +133,10 @@ export default function Composer({
           // el texto que una extensión inyecte en el DOM. Leemos por ref.
           defaultValue=""
           onChange={(e) => setTitle(e.target.value)}
-          onInput={(e) => slog("tecla en título", (e.target as HTMLInputElement).value)}
           placeholder={placeholder}
         />
-        <button
-          type="submit"
-          className="btn-primary btn-sm"
-          disabled={busy}
-          onClick={() => slog("clic en Agregar")}
-        >
+        <button type="submit" className="btn-primary btn-sm" disabled={busy}>
           Agregar
-        </button>
-        <button
-          type="button"
-          className="btn-ghost btn-sm"
-          disabled={busy}
-          onClick={quickAdd}
-          title="Crear con el teclado del sistema (si el campo de arriba no responde)"
-        >
-          ✏️＋
         </button>
       </div>
       <div className="composer-options">

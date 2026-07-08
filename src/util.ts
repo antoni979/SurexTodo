@@ -31,26 +31,6 @@ export const LIST_COLORS = [
 
 export const DEFAULT_COLOR = "#3b82f6";
 
-// ── Logger visible en pantalla ────────────────────────────────────────────
-// Para depurar en dispositivos sin consola (móvil/tablet). Los eventos se
-// muestran en el panel DEBUG (localStorage surexDebug=1).
-export const surexEvents: { t: number; msg: string }[] = [];
-export function slog(msg: string, data?: unknown) {
-  const line =
-    data !== undefined ? `${msg} ${safeJson(data)}` : msg;
-  surexEvents.push({ t: Date.now(), msg: line });
-  if (surexEvents.length > 40) surexEvents.shift();
-  // eslint-disable-next-line no-console
-  console.log("[SUREX]", line);
-}
-function safeJson(d: unknown) {
-  try {
-    return JSON.stringify(d);
-  } catch {
-    return String(d);
-  }
-}
-
 export type Priority = "baja" | "media" | "alta" | "urgente";
 
 export const PRIORITIES: Priority[] = ["baja", "media", "alta", "urgente"];

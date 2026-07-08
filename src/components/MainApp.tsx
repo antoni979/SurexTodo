@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { localToday, surexEvents } from "../util";
+import { localToday } from "../util";
 import { useTaskNotifications } from "../hooks/useTaskNotifications";
 import Sidebar from "./Sidebar";
 import MyDayView from "./views/MyDayView";
@@ -69,28 +69,12 @@ export default function MainApp({
   useEffect(() => {
     if (workspacesLoading) return;
     if (workspaceId !== workspacePref) {
-      if (workspacePref !== null && workspaceId !== null) {
-        // eslint-disable-next-line no-console
-        console.warn(
-          "[SUREX] entorno guardado no válido para este usuario; corregido.",
-          { guardado: workspacePref, usando: workspaceId },
-        );
-      }
       setWorkspacePref(workspaceId);
       if (workspaceId) localStorage.setItem("defaultWorkspace", workspaceId);
       else localStorage.removeItem("defaultWorkspace");
     }
   }, [workspacesLoading, workspaceId, workspacePref]);
   const [today, setToday] = useState(() => localToday());
-
-  // Refresco del panel DEBUG (para ver el log de eventos en vivo).
-  const debugOn = localStorage.getItem("surexDebug") === "1";
-  const [, setDebugTick] = useState(0);
-  useEffect(() => {
-    if (!debugOn) return;
-    const id = setInterval(() => setDebugTick((n) => n + 1), 800);
-    return () => clearInterval(id);
-  }, [debugOn]);
 
   useEffect(() => {
     function msUntilMidnight() {
@@ -163,59 +147,6 @@ export default function MainApp({
         <MenuIcon size={22} />
       </button>
       <main className="content">
-        {localStorage.getItem("surexDebug") === "1" && (
-          <div
-            style={{
-              background: "#fef3c7",
-              border: "1px solid #f59e0b",
-              borderRadius: 8,
-              padding: "8px 12px",
-              margin: "8px 12px",
-              fontSize: 12,
-              fontFamily: "monospace",
-              color: "#78350f",
-              lineHeight: 1.6,
-            }}
-          >
-            <strong>DEBUG</strong> · user: {username} ({userId.slice(0, 8)}…)
-            <br />
-            workspaceId actual:{" "}
-            <b>
-              {workspaceId
-                ? `${workspaces.find((w) => w._id === workspaceId)?.name ?? "??"} (${workspaceId.slice(0, 8)}…)`
-                : "NULL (Personal)"}
-            </b>
-            {workspaceId &&
-              !workspaces.some((w) => w._id === workspaceId) && (
-                <span style={{ color: "#b91c1c" }}>
-                  {" "}
-                  ⚠️ NO ERES MIEMBRO DE ESTE ENTORNO
-                </span>
-              )}
-            <br />
-            entornos: {workspaces.map((w) => w.name).join(", ") || "(ninguno)"}
-            <div
-              style={{
-                marginTop: 6,
-                paddingTop: 6,
-                borderTop: "1px dashed #f59e0b",
-                maxHeight: 160,
-                overflowY: "auto",
-              }}
-            >
-              <strong>eventos (pulsa Agregar):</strong>
-              {surexEvents.length === 0 && <div>— sin eventos aún —</div>}
-              {surexEvents
-                .slice()
-                .reverse()
-                .map((ev, i) => (
-                  <div key={surexEvents.length - i}>
-                    {new Date(ev.t).toLocaleTimeString("es-ES")} · {ev.msg}
-                  </div>
-                ))}
-            </div>
-          </div>
-        )}
         {workspacesLoading ? (
           <div className="ws-loading">Cargando tu espacio…</div>
         ) : (
