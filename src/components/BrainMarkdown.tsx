@@ -5,10 +5,13 @@ import type { Components } from "react-markdown";
 // Convierte [[Título]] y [[Título|Alias]] en enlaces markdown normales que
 // apuntan a un esquema propio ("brainlink://"), para que react-markdown los
 // procese como <a> y podamos interceptarlos con un renderer a medida.
+// El alias puede venir con la barra escapada como \| (obligatorio dentro de
+// una celda de tabla markdown), así que el título no debe absorber esa
+// barra invertida — debe quedar fuera del grupo capturado.
 function wikilinksToMarkdown(body: string): string {
   return body.replace(
-    /\[\[([^\]|]+)(\|([^\]]+))?\]\]/g,
-    (_match, title: string, _pipe: string | undefined, alias: string | undefined) => {
+    /\[\[([^\]|\\]+)(?:\\?\|([^\]]+))?\]\]/g,
+    (_match, title: string, alias: string | undefined) => {
       const t = title.trim();
       const label = (alias ?? t).trim();
       return `[${label}](brainlink://${encodeURIComponent(t)})`;

@@ -11,9 +11,12 @@ async function requireUser(ctx: QueryCtx | MutationCtx) {
 }
 
 // Extrae los títulos dentro de [[Título]] o [[Título|Alias]] de un texto.
+// El alias puede venir con la barra escapada como \| (obligatorio dentro de
+// una celda de tabla markdown, p.ej. "| [[Nota\|Alias]] |"), así que el
+// título no debe absorber esa barra invertida.
 function extractWikilinkTitles(body: string): string[] {
   const out = new Set<string>();
-  const re = /\[\[([^\]|]+)(\|[^\]]+)?\]\]/g;
+  const re = /\[\[([^\]|\\]+)(?:\\?\|[^\]]+)?\]\]/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(body)) !== null) {
     const title = m[1].trim();
@@ -25,7 +28,7 @@ function extractWikilinkTitles(body: string): string[] {
 // Recalcula por completo los brainLinks salientes de una nota: borra los
 // antiguos y reinserta los nuevos, resolviendo cada título contra las notas
 // existentes del mismo dueño.
-async function recomputeLinks(
+export async function recomputeLinks(
   ctx: MutationCtx,
   ownerId: Id<"users">,
   noteId: Id<"brainNotes">,
@@ -185,6 +188,7 @@ export const createNote = mutation({
       title: clean,
       body: body ?? "",
       tags: tags?.filter((t) => t.trim().length > 0),
+      properties: undefined,
       updatedAt: Date.now(),
     });
     await recomputeLinks(ctx, userId, noteId, body ?? "");
@@ -211,8 +215,9 @@ export const updateNote = mutation({
     title: v.optional(v.string()),
     body: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
+    properties: v.optional(v.record(v.string(), v.string())),
   },
-  handler: async (ctx, { noteId, title, body, tags }) => {
+  handler: async (ctx, { noteId, title, body, tags, properties }) => {
     const userId = await requireUser(ctx);
     const note = await ctx.db.get(noteId);
     if (!note || note.ownerId !== userId) throw new Error("Nota no encontrada");
@@ -234,6 +239,7 @@ export const updateNote = mutation({
     }
     if (body !== undefined) patch.body = body;
     if (tags !== undefined) patch.tags = tags.filter((t) => t.trim().length > 0);
+    if (properties !== undefined) patch.properties = properties;
 
     await ctx.db.patch(noteId, patch);
 
@@ -280,3 +286,60 @@ export const deleteNote = mutation({
     return null;
   },
 });
+
+/* ---------- helper de importación masiva (uso: convex/adminOps.ts) ---------- */
+
+// A diferencia de createNote (que rechaza títulos duplicados), esto
+// desambigua automáticamente añadiendo " (2)", " (3)"... — pensado para
+// importar de golpe un vault externo donde puede haber colisiones de título
+// entre carpetas. SIEMPRE requiere un ownerId explícito pasado por quien
+// llama; no hay ningún valor por defecto.
+export async function insertBrainNoteWithDedup(
+  ctx: MutationCtx,
+  ownerId: Id<"users">,
+  data: {
+    title: string;
+    body: string;
+    tags?: string[];
+    properties?: Record<string, string>;
+  },
+): Promise<{ noteId: Id<"brainNotes">; finalTitle: string; renamed: boolean }> {
+  const original = data.title.trim();
+  if (!original) throw new Error("La nota necesita un título");
+
+  let clean = original;
+  let n = 2;
+  while (
+    await ctx.db
+      .query("brainNotes")
+      .withIndex("by_owner_title", (q) =>
+        q.eq("ownerId", ownerId).eq("title", clean),
+      )
+      .unique()
+  ) {
+    clean = `${original} (${n})`;
+    n++;
+  }
+
+  const noteId = await ctx.db.insert("brainNotes", {
+    ownerId,
+    title: clean,
+    body: data.body,
+    tags: data.tags?.filter((t) => t.trim().length > 0),
+    properties: data.properties,
+    updatedAt: Date.now(),
+  });
+  await recomputeLinks(ctx, ownerId, noteId, data.body);
+
+  const dangling = await ctx.db
+    .query("brainLinks")
+    .withIndex("by_owner", (q) => q.eq("ownerId", ownerId))
+    .collect();
+  for (const l of dangling) {
+    if (!l.targetNoteId && l.targetTitle === clean) {
+      await ctx.db.patch(l._id, { targetNoteId: noteId });
+    }
+  }
+
+  return { noteId, finalTitle: clean, renamed: clean !== original };
+}

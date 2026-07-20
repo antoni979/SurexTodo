@@ -178,6 +178,10 @@ export default defineSchema({
     title: v.string(),
     body: v.string(), // markdown en crudo, incluye [[wikilinks]]
     tags: v.optional(v.array(v.string())),
+    // Propiedades libres tipo frontmatter de Obsidian (fecha, modulo,
+    // estado...), como mapa clave->valor en texto. Solo lectura/import por
+    // ahora, se muestran como chips encima de la nota.
+    properties: v.optional(v.record(v.string(), v.string())),
     updatedAt: v.number(),
   })
     .index("by_owner", ["ownerId"])

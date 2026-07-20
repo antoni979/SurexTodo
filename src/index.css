@@ -3096,3 +3096,23 @@ input[type="date"]:hover::-webkit-calendar-picker-indicator {
   .quick-capture { right: 14px; bottom: 84px; }
   .brain-graph-container { height: 420px; }
 }
+
+.brain-properties {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.brain-property-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--sidebar-bg);
+  color: var(--text-soft);
+  border-radius: 6px;
+  padding: 3px 9px;
+  font-size: 12px;
+}
+.brain-property-chip b {
+  color: var(--text);
+  font-weight: 600;
+}

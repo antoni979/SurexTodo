@@ -210,6 +210,17 @@ export default function BrainNoteEditor({
 
       {error && <div className="composer-error">{error}</div>}
 
+      {note?.properties && Object.keys(note.properties).length > 0 && (
+        <div className="brain-properties">
+          {Object.entries(note.properties).map(([k, v]) => (
+            <span key={k} className="brain-property-chip">
+              <b>{k}</b>
+              {v}
+            </span>
+          ))}
+        </div>
+      )}
+
       <div className="brain-tags">
         {tags.map((t) => (
           <span key={t} className="tag-chip">

@@ -2,6 +2,7 @@ import { mutation, query, action, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { createAccount } from "@convex-dev/auth/server";
 import { internal } from "./_generated/api";
+import { insertBrainNoteWithDedup, recomputeLinks } from "./brain";
 
 // List all profiles (CLI use only)
 export const listProfiles = query({
@@ -305,5 +306,73 @@ export const finishUserSetup = internalMutation({
     if (!wsMember) {
       await ctx.db.insert("workspaceMembers", { workspaceId, userId });
     }
+  },
+});
+
+// Importación masiva al Segundo Cerebro de UN usuario, identificado por
+// username EXACTO (no fuzzy). Piensa dos veces antes de tocar esto: si el
+// username no existe o hay ambigüedad, falla fuerte — nunca hay owner por
+// defecto. CLI-only, pensado para migrar un vault de Obsidian.
+export const importBrainNotesForUser = mutation({
+  args: {
+    username: v.string(),
+    notes: v.array(
+      v.object({
+        title: v.string(),
+        body: v.string(),
+        tags: v.optional(v.array(v.string())),
+        properties: v.optional(v.record(v.string(), v.string())),
+      }),
+    ),
+  },
+  handler: async (ctx, { username, notes }) => {
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_username", (q) => q.eq("username", username))
+      .unique();
+    if (!profile) {
+      throw new Error(
+        `Username "${username}" no encontrado (exacto, sin coincidencia difusa). Abortado sin tocar nada.`,
+      );
+    }
+    const ownerId = profile.userId;
+
+    const log: { title: string; finalTitle: string; renamed: boolean }[] = [];
+    for (const n of notes) {
+      const { finalTitle, renamed } = await insertBrainNoteWithDedup(ctx, ownerId, n);
+      log.push({ title: n.title, finalTitle, renamed });
+    }
+    return {
+      ownerUsername: profile.username,
+      ownerId,
+      imported: log.length,
+      renamedCount: log.filter((l) => l.renamed).length,
+      log,
+    };
+  },
+});
+
+// Vuelve a extraer los [[wikilinks]] de todas las notas de UN usuario (mismo
+// username exacto, mismo aborto si no coincide). Útil tras arreglar un bug
+// del parser de enlaces sin tener que reimportar todo el vault.
+export const recomputeAllBrainLinksForUser = mutation({
+  args: { username: v.string() },
+  handler: async (ctx, { username }) => {
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_username", (q) => q.eq("username", username))
+      .unique();
+    if (!profile) {
+      throw new Error(`Username "${username}" no encontrado. Abortado sin tocar nada.`);
+    }
+    const ownerId = profile.userId;
+    const notes = await ctx.db
+      .query("brainNotes")
+      .withIndex("by_owner", (q) => q.eq("ownerId", ownerId))
+      .collect();
+    for (const note of notes) {
+      await recomputeLinks(ctx, ownerId, note._id, note.body);
+    }
+    return { ownerUsername: profile.username, notesProcessed: notes.length };
   },
 });
