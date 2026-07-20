@@ -132,6 +132,17 @@ export const SettingsIcon = svg(
   </>,
 );
 
+export const BrainIcon = svg(
+  <>
+    <circle cx="6" cy="6" r="2.5" />
+    <circle cx="18" cy="6" r="2.5" />
+    <circle cx="6" cy="18" r="2.5" />
+    <circle cx="18" cy="18" r="2.5" />
+    <circle cx="12" cy="12" r="2.5" />
+    <path d="M8.2 7.5 10 10.5M15.8 7.5 14 10.5M8.2 16.5 10 13.5M15.8 16.5 14 13.5" />
+  </>,
+);
+
 export const LogoutIcon = svg(
   <>
     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />

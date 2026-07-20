@@ -13,6 +13,8 @@ import ProjectsView from "./views/ProjectsView";
 import ProjectView from "./views/ProjectView";
 import ListView from "./views/ListView";
 import CalendarView from "./views/CalendarView";
+import BrainView from "./views/BrainView";
+import QuickCapture from "./QuickCapture";
 import { MenuIcon } from "./icons";
 
 export type View =
@@ -23,7 +25,8 @@ export type View =
   | { kind: "team"; teamId: Id<"teams"> }
   | { kind: "projects" }
   | { kind: "project"; projectId: Id<"tasks"> }
-  | { kind: "list"; listId: Id<"lists"> };
+  | { kind: "list"; listId: Id<"lists"> }
+  | { kind: "brain" };
 
 export default function MainApp({
   username,
@@ -185,9 +188,11 @@ export default function MainApp({
             workspaceId={workspaceId}
           />
         )}
+        {view.kind === "brain" && <BrainView />}
         </>
         )}
       </main>
+      {!workspacesLoading && <QuickCapture workspaceId={workspaceId} />}
     </div>
   );
 }

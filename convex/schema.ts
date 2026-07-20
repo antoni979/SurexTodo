@@ -169,4 +169,29 @@ export default defineSchema({
   })
     .index("by_user_date", ["userId", "date"])
     .index("by_task", ["taskId"]),
+
+  // --- Segundo Cerebro: un único espacio de notas por usuario, transversal
+  // a todos sus entornos (deliberadamente SIN workspaceId). La única
+  // garantía de privacidad exigida es entre usuarios, no entre entornos.
+  brainNotes: defineTable({
+    ownerId: v.id("users"),
+    title: v.string(),
+    body: v.string(), // markdown en crudo, incluye [[wikilinks]]
+    tags: v.optional(v.array(v.string())),
+    updatedAt: v.number(),
+  })
+    .index("by_owner", ["ownerId"])
+    .index("by_owner_title", ["ownerId", "title"]),
+
+  // Enlaces [[Título]] extraídos del body al guardar una nota. Se recalculan
+  // enteros en cada guardado (borrar+reinsertar), nada de diffing.
+  brainLinks: defineTable({
+    ownerId: v.id("users"),
+    sourceNoteId: v.id("brainNotes"),
+    targetTitle: v.string(),
+    targetNoteId: v.optional(v.id("brainNotes")), // undefined = enlace roto
+  })
+    .index("by_source", ["sourceNoteId"])
+    .index("by_target_note", ["targetNoteId"])
+    .index("by_owner", ["ownerId"]),
 });

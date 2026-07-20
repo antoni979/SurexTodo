@@ -11,6 +11,7 @@
 import type * as adminOps from "../adminOps.js";
 import type * as attachments from "../attachments.js";
 import type * as auth from "../auth.js";
+import type * as brain from "../brain.js";
 import type * as http from "../http.js";
 import type * as lists from "../lists.js";
 import type * as profiles from "../profiles.js";
@@ -30,6 +31,7 @@ declare const fullApi: ApiFromModules<{
   adminOps: typeof adminOps;
   attachments: typeof attachments;
   auth: typeof auth;
+  brain: typeof brain;
   http: typeof http;
   lists: typeof lists;
   profiles: typeof profiles;
