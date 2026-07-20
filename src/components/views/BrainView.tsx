@@ -5,6 +5,7 @@ import type { Id } from "../../../convex/_generated/dataModel";
 import { SearchIcon, PlusIcon } from "../icons";
 import BrainNoteEditor from "../BrainNoteEditor";
 import BrainGraphView from "../BrainGraphView";
+import BrainFolderTree from "../BrainFolderTree";
 
 type Mode = "list" | "editor" | "graph";
 type NoteSummary = {
@@ -12,6 +13,7 @@ type NoteSummary = {
   title: string;
   snippet: string;
   tags: string[];
+  folder: string;
   updatedAt: number;
 };
 
@@ -20,10 +22,20 @@ export default function BrainView() {
   const [selectedId, setSelectedId] = useState<Id<"brainNotes"> | "new" | null>(null);
   const [pendingTitle, setPendingTitle] = useState<string | undefined>(undefined);
   const [search, setSearch] = useState("");
+  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
 
   const notes: NoteSummary[] =
     useQuery(api.brain.listMyNotes, { search: search || undefined }) ?? [];
   const allTitlesQuery: NoteSummary[] = useQuery(api.brain.listMyNotes, {}) ?? [];
+  const allFolders = Array.from(
+    new Set(allTitlesQuery.map((n) => n.folder).filter(Boolean)),
+  ).sort();
+
+  const visibleNotes = notes.filter((n) => {
+    if (selectedFolder === null) return true;
+    if (selectedFolder === "") return !n.folder;
+    return n.folder === selectedFolder || n.folder.startsWith(selectedFolder + "/");
+  });
 
   function openNote(id: Id<"brainNotes">) {
     setSelectedId(id);
@@ -83,32 +95,42 @@ export default function BrainView() {
 
       <div className="screen-scroll">
         {mode === "list" && (
-          <div className="brain-note-grid">
-            {notes.length === 0 && (
-              <p className="sidebar-empty">
-                Aún no tienes notas. Crea la primera con "Nueva nota".
-              </p>
-            )}
-            {notes.map((n) => (
-              <button
-                key={n._id}
-                type="button"
-                className="brain-note-card"
-                onClick={() => openNote(n._id)}
-              >
-                <div className="brain-note-card-title">{n.title}</div>
-                <div className="brain-note-card-snippet">{n.snippet}</div>
-                {n.tags.length > 0 && (
-                  <div className="brain-note-card-tags">
-                    {n.tags.map((t) => (
-                      <span key={t} className="tag-chip">
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </button>
-            ))}
+          <div className="brain-list-layout">
+            <BrainFolderTree
+              notes={allTitlesQuery}
+              selectedFolder={selectedFolder}
+              onSelectFolder={setSelectedFolder}
+            />
+            <div className="brain-note-grid">
+              {visibleNotes.length === 0 && (
+                <p className="sidebar-empty">
+                  {notes.length === 0
+                    ? 'Aún no tienes notas. Crea la primera con "Nueva nota".'
+                    : "No hay notas en esta carpeta."}
+                </p>
+              )}
+              {visibleNotes.map((n) => (
+                <button
+                  key={n._id}
+                  type="button"
+                  className="brain-note-card"
+                  onClick={() => openNote(n._id)}
+                >
+                  <div className="brain-note-card-title">{n.title}</div>
+                  {n.folder && <div className="brain-note-card-folder">📁 {n.folder}</div>}
+                  <div className="brain-note-card-snippet">{n.snippet}</div>
+                  {n.tags.length > 0 && (
+                    <div className="brain-note-card-tags">
+                      {n.tags.map((t) => (
+                        <span key={t} className="tag-chip">
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -117,7 +139,9 @@ export default function BrainView() {
             key={selectedId === "new" ? `new-${pendingTitle ?? ""}` : selectedId}
             noteId={selectedId}
             initialTitle={pendingTitle}
+            initialFolder={selectedFolder && selectedFolder !== "" ? selectedFolder : undefined}
             allNotes={allTitlesQuery.map((n) => ({ _id: n._id, title: n.title }))}
+            allFolders={allFolders}
             onClose={backToList}
             onOpenNote={openNote}
             onNavigateToTitle={navigateToTitle}

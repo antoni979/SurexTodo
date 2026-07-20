@@ -10,7 +10,9 @@ type NoteRef = { _id: Id<"brainNotes">; title: string };
 export default function BrainNoteEditor({
   noteId,
   initialTitle,
+  initialFolder,
   allNotes,
+  allFolders,
   onClose,
   onOpenNote,
   onNavigateToTitle,
@@ -18,7 +20,9 @@ export default function BrainNoteEditor({
 }: {
   noteId: Id<"brainNotes"> | "new";
   initialTitle?: string;
+  initialFolder?: string;
   allNotes: NoteRef[];
+  allFolders: string[];
   onClose: () => void;
   onOpenNote: (id: Id<"brainNotes">) => void;
   onNavigateToTitle: (title: string) => void;
@@ -41,6 +45,7 @@ export default function BrainNoteEditor({
   const [body, setBody] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
+  const [folder, setFolder] = useState(initialFolder ?? "");
   const [mode, setMode] = useState<"edit" | "preview">("edit");
   const [error, setError] = useState<string | null>(null);
   const [currentId, setCurrentId] = useState<Id<"brainNotes"> | null>(
@@ -59,16 +64,18 @@ export default function BrainNoteEditor({
       setTitle(note.title);
       setBody(note.body);
       setTags(note.tags ?? []);
+      setFolder(note.folder ?? "");
     } else if (isNew) {
       setTitle(initialTitle ?? "");
       setBody("");
       setTags([]);
+      setFolder(initialFolder ?? "");
     }
-  }, [note, isNew, initialTitle]);
+  }, [note, isNew, initialTitle, initialFolder]);
 
   const existingTitles = new Set(allNotes.map((n) => n.title));
 
-  async function persist(patch: { title?: string; body?: string; tags?: string[] }) {
+  async function persist(patch: { title?: string; body?: string; tags?: string[]; folder?: string }) {
     setError(null);
     try {
       if (currentId) {
@@ -80,12 +87,17 @@ export default function BrainNoteEditor({
           title: t,
           body: patch.body ?? body,
           tags: patch.tags ?? tags,
+          folder: patch.folder ?? folder,
         });
         setCurrentId(newId);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo guardar");
     }
+  }
+
+  function handleFolderBlur() {
+    if (!note || folder !== (note.folder ?? "")) void persist({ folder });
   }
 
   function handleTitleBlur() {
@@ -209,6 +221,23 @@ export default function BrainNoteEditor({
       </div>
 
       {error && <div className="composer-error">{error}</div>}
+
+      <div className="brain-folder-field">
+        <span>📁</span>
+        <input
+          list="brain-folder-options"
+          className="brain-folder-input"
+          value={folder}
+          placeholder="Sin carpeta (raíz)"
+          onChange={(e) => setFolder(e.target.value)}
+          onBlur={handleFolderBlur}
+        />
+        <datalist id="brain-folder-options">
+          {allFolders.map((f) => (
+            <option key={f} value={f} />
+          ))}
+        </datalist>
+      </div>
 
       {note?.properties && Object.keys(note.properties).length > 0 && (
         <div className="brain-properties">

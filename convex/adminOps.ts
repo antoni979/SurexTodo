@@ -322,6 +322,7 @@ export const importBrainNotesForUser = mutation({
         body: v.string(),
         tags: v.optional(v.array(v.string())),
         properties: v.optional(v.record(v.string(), v.string())),
+        folder: v.optional(v.string()),
       }),
     ),
   },
@@ -374,5 +375,43 @@ export const recomputeAllBrainLinksForUser = mutation({
       await recomputeLinks(ctx, ownerId, note._id, note.body);
     }
     return { ownerUsername: profile.username, notesProcessed: notes.length };
+  },
+});
+
+// Rellena el campo folder de notas YA existentes, emparejando por título
+// exacto (case-sensitive). Pensado para notas importadas antes de que
+// existiera folder. Mismo username exacto obligatorio de siempre.
+export const backfillBrainFoldersForUser = mutation({
+  args: {
+    username: v.string(),
+    items: v.array(v.object({ title: v.string(), folder: v.string() })),
+  },
+  handler: async (ctx, { username, items }) => {
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_username", (q) => q.eq("username", username))
+      .unique();
+    if (!profile) {
+      throw new Error(`Username "${username}" no encontrado. Abortado sin tocar nada.`);
+    }
+    const ownerId = profile.userId;
+
+    let updated = 0;
+    const notFound: string[] = [];
+    for (const item of items) {
+      const note = await ctx.db
+        .query("brainNotes")
+        .withIndex("by_owner_title", (q) =>
+          q.eq("ownerId", ownerId).eq("title", item.title),
+        )
+        .unique();
+      if (!note) {
+        notFound.push(item.title);
+        continue;
+      }
+      await ctx.db.patch(note._id, { folder: item.folder || undefined });
+      updated++;
+    }
+    return { ownerUsername: profile.username, updated, notFound };
   },
 });

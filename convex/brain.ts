@@ -83,6 +83,7 @@ export const listMyNotes = query({
         title: n.title,
         snippet: n.body.slice(0, 140),
         tags: n.tags ?? [],
+        folder: n.folder ?? "",
         updatedAt: n.updatedAt,
       }));
   },
@@ -169,8 +170,9 @@ export const createNote = mutation({
     title: v.string(),
     body: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
+    folder: v.optional(v.string()),
   },
-  handler: async (ctx, { title, body, tags }) => {
+  handler: async (ctx, { title, body, tags, folder }) => {
     const userId = await requireUser(ctx);
     const clean = title.trim();
     if (!clean) throw new Error("La nota necesita un título");
@@ -189,6 +191,7 @@ export const createNote = mutation({
       body: body ?? "",
       tags: tags?.filter((t) => t.trim().length > 0),
       properties: undefined,
+      folder: folder?.trim() || undefined,
       updatedAt: Date.now(),
     });
     await recomputeLinks(ctx, userId, noteId, body ?? "");
@@ -216,8 +219,9 @@ export const updateNote = mutation({
     body: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
     properties: v.optional(v.record(v.string(), v.string())),
+    folder: v.optional(v.string()),
   },
-  handler: async (ctx, { noteId, title, body, tags, properties }) => {
+  handler: async (ctx, { noteId, title, body, tags, properties, folder }) => {
     const userId = await requireUser(ctx);
     const note = await ctx.db.get(noteId);
     if (!note || note.ownerId !== userId) throw new Error("Nota no encontrada");
@@ -240,6 +244,7 @@ export const updateNote = mutation({
     if (body !== undefined) patch.body = body;
     if (tags !== undefined) patch.tags = tags.filter((t) => t.trim().length > 0);
     if (properties !== undefined) patch.properties = properties;
+    if (folder !== undefined) patch.folder = folder.trim() || undefined;
 
     await ctx.db.patch(noteId, patch);
 
@@ -302,6 +307,7 @@ export async function insertBrainNoteWithDedup(
     body: string;
     tags?: string[];
     properties?: Record<string, string>;
+    folder?: string;
   },
 ): Promise<{ noteId: Id<"brainNotes">; finalTitle: string; renamed: boolean }> {
   const original = data.title.trim();
@@ -327,6 +333,7 @@ export async function insertBrainNoteWithDedup(
     body: data.body,
     tags: data.tags?.filter((t) => t.trim().length > 0),
     properties: data.properties,
+    folder: data.folder?.trim() || undefined,
     updatedAt: Date.now(),
   });
   await recomputeLinks(ctx, ownerId, noteId, data.body);

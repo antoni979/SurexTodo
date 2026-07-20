@@ -182,6 +182,10 @@ export default defineSchema({
     // estado...), como mapa clave->valor en texto. Solo lectura/import por
     // ahora, se muestran como chips encima de la nota.
     properties: v.optional(v.record(v.string(), v.string())),
+    // Ruta de carpeta al estilo Obsidian, p.ej. "Trabajo/Proyectos". Es una
+    // capa de organización aparte de los [[enlaces]], no un contenedor
+    // exclusivo — una nota sin folder vive en la raíz.
+    folder: v.optional(v.string()),
     updatedAt: v.number(),
   })
     .index("by_owner", ["ownerId"])
