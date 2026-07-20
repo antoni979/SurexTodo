@@ -49,8 +49,17 @@ function TreeItem({
   depth: number;
   countFor: (path: string) => number;
 }) {
-  const [open, setOpen] = useState(depth < 1);
+  // Todo abierto por defecto: con ~30-40 carpetas se ve entero de un vistazo
+  // y queda claro que hay subcarpetas, en vez de esconderlas tras una
+  // flechita fácil de pasar por alto.
+  const [open, setOpen] = useState(true);
   const hasChildren = node.children.length > 0;
+
+  function handleLabelClick() {
+    onSelect(node.path);
+    if (hasChildren) setOpen(true); // clicar un padre siempre revela sus hijos
+  }
+
   return (
     <div>
       <div className="brain-tree-row" style={{ paddingLeft: depth * 14 }}>
@@ -58,7 +67,11 @@ function TreeItem({
           <button
             type="button"
             className="brain-tree-toggle"
-            onClick={() => setOpen((o) => !o)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen((o) => !o);
+            }}
+            title={open ? "Colapsar" : "Expandir"}
           >
             {open ? "▾" : "▸"}
           </button>
@@ -68,9 +81,10 @@ function TreeItem({
         <button
           type="button"
           className={"brain-tree-label" + (selected === node.path ? " active" : "")}
-          onClick={() => onSelect(node.path)}
+          onClick={handleLabelClick}
         >
-          📁 {node.name} <span className="brain-tree-count">{countFor(node.path)}</span>
+          {hasChildren ? "📂" : "📁"} {node.name}{" "}
+          <span className="brain-tree-count">{countFor(node.path)}</span>
         </button>
       </div>
       {open &&
