@@ -96,6 +96,18 @@ textarea {
     border-color 0.12s ease,
     box-shadow 0.12s ease;
 }
+/* iOS Safari hace zoom automático al enfocar cualquier campo con font-size
+   menor de 16px. Regla global y catch-all (no por componente) para que
+   ningún input nuevo pueda reintroducir el bug por accidente: cualquier
+   input/select/textarea de la app, sea cual sea su clase, respeta el
+   mínimo de 16px en móvil sin perder el tamaño más compacto de escritorio. */
+@media (max-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
 input:focus,
 select:focus,
 textarea:focus {
@@ -974,6 +986,10 @@ input[type="date"]:hover::-webkit-calendar-picker-indicator {
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.15s;
+}
+.view-toggle {
+  display: inline-flex;
+  gap: 6px;
 }
 .toggle-done-btn:hover {
   border-color: var(--accent);

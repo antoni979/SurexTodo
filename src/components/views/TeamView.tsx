@@ -5,8 +5,10 @@ import type { Id } from "../../../convex/_generated/dataModel";
 import { sortTasks } from "../../util";
 import Composer from "../Composer";
 import TaskScreen, { type TaskGroup } from "../TaskScreen";
+import TaskDetail from "../TaskDetail";
+import TeamKanbanBoard from "../TeamKanbanBoard";
 import UserPicker from "../UserPicker";
-import { PlusIcon } from "../icons";
+import { PlusIcon, KanbanIcon, ListIcon } from "../icons";
 
 function TeamBar({
   teamId,
@@ -67,6 +69,33 @@ function TeamBar({
   );
 }
 
+function ViewToggle({
+  view,
+  onChange,
+}: {
+  view: "kanban" | "list";
+  onChange: (v: "kanban" | "list") => void;
+}) {
+  return (
+    <div className="view-toggle">
+      <button
+        type="button"
+        className={"toggle-done-btn" + (view === "kanban" ? " active" : "")}
+        onClick={() => onChange("kanban")}
+      >
+        <KanbanIcon size={14} /> Tablero
+      </button>
+      <button
+        type="button"
+        className={"toggle-done-btn" + (view === "list" ? " active" : "")}
+        onClick={() => onChange("list")}
+      >
+        <ListIcon size={14} /> Lista
+      </button>
+    </div>
+  );
+}
+
 export default function TeamView({
   teamId,
   today,
@@ -84,6 +113,15 @@ export default function TeamView({
   const [filter, setFilter] = useState<"all" | "mine" | "unassigned" | string>(
     "all",
   );
+  const [view, setView] = useState<"kanban" | "list">(
+    () => (localStorage.getItem("teamViewMode") as "kanban" | "list") || "kanban",
+  );
+  const [selectedTaskId, setSelectedTaskId] = useState<Id<"tasks"> | null>(null);
+
+  function changeView(v: "kanban" | "list") {
+    setView(v);
+    localStorage.setItem("teamViewMode", v);
+  }
 
   if (team === undefined) {
     return (
@@ -114,9 +152,92 @@ export default function TeamView({
     if (filter === "unassigned") return !t.assigneeId;
     return t.assigneeId === filter;
   });
+
+  const filterBar = (
+    <div className="assignee-filter">
+      <span className="assignee-filter-label">Mostrar:</span>
+      <button
+        type="button"
+        className={"filter-chip" + (filter === "all" ? " active" : "")}
+        onClick={() => setFilter("all")}
+      >
+        Todas
+      </button>
+      <button
+        type="button"
+        className={"filter-chip" + (filter === "mine" ? " active" : "")}
+        onClick={() => setFilter("mine")}
+      >
+        Asignadas a mí
+      </button>
+      <button
+        type="button"
+        className={"filter-chip" + (filter === "unassigned" ? " active" : "")}
+        onClick={() => setFilter("unassigned")}
+      >
+        Sin asignar
+      </button>
+      {team.members
+        .filter((m) => m.userId !== myUserId)
+        .map((m) => (
+          <button
+            key={m.userId}
+            type="button"
+            className={"filter-chip" + (filter === m.userId ? " active" : "")}
+            onClick={() => setFilter(m.userId)}
+          >
+            <span className="avatar sm">{m.username.charAt(0).toUpperCase()}</span>
+            {m.username}
+          </button>
+        ))}
+    </div>
+  );
+
+  if (view === "kanban") {
+    const selectedTask = filtered.find((t) => t._id === selectedTaskId) ?? null;
+    return (
+      <div className="screen">
+        <header className="screen-head" style={{ color: "#2d7d52" }}>
+          <h1>{team.name}</h1>
+          <p className="screen-sub">
+            {team.members.length} {team.members.length === 1 ? "miembro" : "miembros"} · tareas de equipo
+          </p>
+          <div className="screen-toolbar">
+            <ViewToggle view={view} onChange={changeView} />
+          </div>
+          <TeamBar teamId={teamId} members={team.members} myUserId={myUserId} isOwner={team.isOwner} />
+          {filterBar}
+        </header>
+        <div className="screen-scroll">
+          {tasks === undefined ? (
+            <p className="screen-empty">Cargando…</p>
+          ) : (
+            <TeamKanbanBoard
+              teamId={teamId}
+              tasks={filtered}
+              today={today}
+              members={team.members}
+              selectedTaskId={selectedTaskId}
+              onSelectTask={setSelectedTaskId}
+            />
+          )}
+        </div>
+        {selectedTask && (
+          <TaskDetail
+            key={selectedTask._id}
+            task={selectedTask}
+            today={today}
+            members={team.members}
+            onClose={() => setSelectedTaskId(null)}
+            onOpenProject={onOpenProject}
+          />
+        )}
+      </div>
+    );
+  }
+
   const pending = sortTasks(filtered.filter((t) => !t.completed));
   const done = sortTasks(filtered.filter((t) => t.completed));
-
   const groups: TaskGroup[] = [
     { tasks: pending },
     { label: "Completadas", tasks: done },
@@ -136,6 +257,7 @@ export default function TeamView({
       showTeamChip={false}
       loading={tasks === undefined}
       emptyText="Este equipo aún no tiene tareas. Crea una y asígnala a un miembro."
+      headerExtra={<ViewToggle view={view} onChange={changeView} />}
       beforeList={
         <>
           <TeamBar
@@ -144,55 +266,7 @@ export default function TeamView({
             myUserId={myUserId}
             isOwner={team.isOwner}
           />
-          <div className="assignee-filter">
-            <span className="assignee-filter-label">Mostrar:</span>
-            <button
-              type="button"
-              className={
-                "filter-chip" + (filter === "all" ? " active" : "")
-              }
-              onClick={() => setFilter("all")}
-            >
-              Todas
-            </button>
-            <button
-              type="button"
-              className={
-                "filter-chip" + (filter === "mine" ? " active" : "")
-              }
-              onClick={() => setFilter("mine")}
-            >
-              Asignadas a mí
-            </button>
-            <button
-              type="button"
-              className={
-                "filter-chip" +
-                (filter === "unassigned" ? " active" : "")
-              }
-              onClick={() => setFilter("unassigned")}
-            >
-              Sin asignar
-            </button>
-            {team.members
-              .filter((m) => m.userId !== myUserId)
-              .map((m) => (
-                <button
-                  key={m.userId}
-                  type="button"
-                  className={
-                    "filter-chip" +
-                    (filter === m.userId ? " active" : "")
-                  }
-                  onClick={() => setFilter(m.userId)}
-                >
-                  <span className="avatar sm">
-                    {m.username.charAt(0).toUpperCase()}
-                  </span>
-                  {m.username}
-                </button>
-              ))}
-          </div>
+          {filterBar}
         </>
       }
       composer={

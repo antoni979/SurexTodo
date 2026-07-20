@@ -214,7 +214,7 @@ export const PROJECT_STATUS_META: Record<
 export type KanbanStatus = "todo" | "in_progress" | "done";
 
 export const KANBAN_COLUMNS: { key: KanbanStatus; label: string }[] = [
-  { key: "todo", label: "Por hacer" },
+  { key: "todo", label: "Por empezar" },
   { key: "in_progress", label: "En curso" },
-  { key: "done", label: "Hecho" },
+  { key: "done", label: "Terminado" },
 ];

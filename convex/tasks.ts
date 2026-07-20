@@ -883,8 +883,8 @@ export const moveTaskInKanban = mutation({
     const task = await ctx.db.get(taskId);
     if (!task) throw new Error("Tarea no encontrada");
     await assertAccess(ctx, task, userId);
-    if (!task.parentTaskId) {
-      throw new Error("Solo las tareas dentro de un proyecto van al tablero");
+    if (!task.parentTaskId && !task.teamId) {
+      throw new Error("Esta tarea no pertenece a ningún tablero kanban");
     }
     const patch: {
       kanbanStatus: "todo" | "in_progress" | "done";
