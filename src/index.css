@@ -2296,9 +2296,16 @@ input[type="date"]:hover::-webkit-calendar-picker-indicator {
   flex-direction: column;
   min-height: 180px;
   padding: 10px;
+  outline: 2px dashed transparent;
+  outline-offset: -2px;
+  transition: outline-color 0.12s, background-color 0.12s;
 }
 .kanban-col-droppable {
-  outline: 2px dashed transparent;
+  outline-color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.kanban-col-dragover {
+  outline-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, #f1f1f1);
 }
 .kanban-col-head {
   display: flex;
@@ -2321,9 +2328,15 @@ input[type="date"]:hover::-webkit-calendar-picker-indicator {
   padding: 10px;
   cursor: grab;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: opacity 0.12s, transform 0.12s, box-shadow 0.12s;
 }
 .kanban-card:active {
   cursor: grabbing;
+}
+.kanban-card-dragging {
+  opacity: 0.35;
+  transform: scale(0.97) rotate(-1deg);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
 }
 .kanban-card.done .kanban-card-title {
   text-decoration: line-through;

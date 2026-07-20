@@ -523,6 +523,7 @@ function KanbanBoard({
   const moveTask = useMutation(api.tasks.moveTaskInKanban);
   const createTask = useMutation(api.tasks.createTask);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverCol, setDragOverCol] = useState<KanbanStatus | null>(null);
   const [composer, setComposer] = useState<KanbanStatus | null>(null);
   const [newTitle, setNewTitle] = useState("");
   const [newDate, setNewDate] = useState("");
@@ -575,10 +576,20 @@ function KanbanBoard({
         <div
           key={col.key}
           className={
-            "kanban-col" + (draggingId ? " kanban-col-droppable" : "")
+            "kanban-col" +
+            (draggingId ? " kanban-col-droppable" : "") +
+            (dragOverCol === col.key ? " kanban-col-dragover" : "")
           }
           onDragOver={(e) => {
             e.preventDefault();
+          }}
+          onDragEnter={(e) => {
+            e.preventDefault();
+            setDragOverCol(col.key);
+          }}
+          onDragLeave={(e) => {
+            if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+            setDragOverCol((c) => (c === col.key ? null : c));
           }}
           onDrop={(e) => {
             e.preventDefault();
@@ -590,6 +601,7 @@ function KanbanBoard({
               });
             }
             setDraggingId(null);
+            setDragOverCol(null);
           }}
         >
           <div className="kanban-col-head">
@@ -602,8 +614,12 @@ function KanbanBoard({
                 key={t._id}
                 task={t}
                 today={today}
+                isDragging={draggingId === t._id}
                 onDragStart={() => setDraggingId(t._id)}
-                onDragEnd={() => setDraggingId(null)}
+                onDragEnd={() => {
+                  setDraggingId(null);
+                  setDragOverCol(null);
+                }}
                 projectId={project._id}
                 members={project.members}
                 selected={selectedTaskId === t._id}
@@ -695,6 +711,7 @@ function KanbanCard({
   members,
   onSelect,
   selected,
+  isDragging,
 }: {
   task: ProjectTask;
   today: string;
@@ -705,6 +722,7 @@ function KanbanCard({
   members: { userId: Id<"users">; username: string }[];
   onSelect: () => void;
   selected: boolean;
+  isDragging: boolean;
 }) {
   const toggle = useMutation(api.tasks.toggleComplete);
   const updateTask = useMutation(api.tasks.updateTask);
@@ -717,7 +735,12 @@ function KanbanCard({
 
   return (
     <div
-      className={"kanban-card" + (task.completed ? " done" : "") + (selected ? " kanban-card-selected" : "")}
+      className={
+        "kanban-card" +
+        (task.completed ? " done" : "") +
+        (selected ? " kanban-card-selected" : "") +
+        (isDragging ? " kanban-card-dragging" : "")
+      }
       draggable
       onDragStart={(e) => {
         e.dataTransfer.setData("text/plain", task._id);

@@ -33,6 +33,7 @@ export default function TeamKanbanBoard({
   const moveTask = useMutation(api.tasks.moveTaskInKanban);
   const createTask = useMutation(api.tasks.createTask);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverCol, setDragOverCol] = useState<KanbanStatus | null>(null);
   const [composer, setComposer] = useState<KanbanStatus | null>(null);
   const [newTitle, setNewTitle] = useState("");
   const [newDate, setNewDate] = useState("");
@@ -75,13 +76,26 @@ export default function TeamKanbanBoard({
       {KANBAN_COLUMNS.map((col) => (
         <div
           key={col.key}
-          className={"kanban-col" + (draggingId ? " kanban-col-droppable" : "")}
+          className={
+            "kanban-col" +
+            (draggingId ? " kanban-col-droppable" : "") +
+            (dragOverCol === col.key ? " kanban-col-dragover" : "")
+          }
           onDragOver={(e) => e.preventDefault()}
+          onDragEnter={(e) => {
+            e.preventDefault();
+            setDragOverCol(col.key);
+          }}
+          onDragLeave={(e) => {
+            if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+            setDragOverCol((c) => (c === col.key ? null : c));
+          }}
           onDrop={(e) => {
             e.preventDefault();
             const id = e.dataTransfer.getData("text/plain");
             if (id) void moveTask({ taskId: id as Id<"tasks">, status: col.key });
             setDraggingId(null);
+            setDragOverCol(null);
           }}
         >
           <div className="kanban-col-head">
@@ -96,9 +110,13 @@ export default function TeamKanbanBoard({
                 today={today}
                 members={members}
                 selected={selectedTaskId === t._id}
+                isDragging={draggingId === t._id}
                 onSelect={() => onSelectTask(t._id as Id<"tasks">)}
                 onDragStart={() => setDraggingId(t._id)}
-                onDragEnd={() => setDraggingId(null)}
+                onDragEnd={() => {
+                  setDraggingId(null);
+                  setDragOverCol(null);
+                }}
                 onMove={(s) => void moveTask({ taskId: t._id as Id<"tasks">, status: s })}
               />
             ))}
@@ -156,6 +174,7 @@ function TeamKanbanCard({
   members,
   onSelect,
   selected,
+  isDragging,
   onDragStart,
   onDragEnd,
   onMove,
@@ -165,6 +184,7 @@ function TeamKanbanCard({
   members: Member[];
   onSelect: () => void;
   selected: boolean;
+  isDragging: boolean;
   onDragStart: () => void;
   onDragEnd: () => void;
   onMove: (s: KanbanStatus) => void;
@@ -178,7 +198,12 @@ function TeamKanbanCard({
 
   return (
     <div
-      className={"kanban-card" + (task.completed ? " done" : "") + (selected ? " kanban-card-selected" : "")}
+      className={
+        "kanban-card" +
+        (task.completed ? " done" : "") +
+        (selected ? " kanban-card-selected" : "") +
+        (isDragging ? " kanban-card-dragging" : "")
+      }
       draggable
       onDragStart={(e) => {
         e.dataTransfer.setData("text/plain", task._id);
