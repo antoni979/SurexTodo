@@ -49,10 +49,10 @@ function TreeItem({
   depth: number;
   countFor: (path: string) => number;
 }) {
-  // Todo abierto por defecto: con ~30-40 carpetas se ve entero de un vistazo
-  // y queda claro que hay subcarpetas, en vez de esconderlas tras una
-  // flechita fácil de pasar por alto.
-  const [open, setOpen] = useState(true);
+  // Solo el nivel raíz abierto por defecto: deja claro que hay subcarpetas
+  // sin desplegar de golpe las ~35 carpetas hasta 6 niveles de profundidad
+  // (eso hacía la lista kilométrica y todo se veía apretado).
+  const [open, setOpen] = useState(depth === 0);
   const hasChildren = node.children.length > 0;
 
   function handleLabelClick() {
@@ -62,7 +62,7 @@ function TreeItem({
 
   return (
     <div>
-      <div className="brain-tree-row" style={{ paddingLeft: depth * 14 }}>
+      <div className="brain-tree-row" style={{ paddingLeft: depth * 12 }}>
         {hasChildren ? (
           <button
             type="button"
@@ -82,6 +82,7 @@ function TreeItem({
           type="button"
           className={"brain-tree-label" + (selected === node.path ? " active" : "")}
           onClick={handleLabelClick}
+          title={node.name}
         >
           {hasChildren ? "📂" : "📁"} {node.name}{" "}
           <span className="brain-tree-count">{countFor(node.path)}</span>
@@ -115,6 +116,10 @@ export default function BrainFolderTree({
   const folders = Array.from(new Set(notes.map((n) => n.folder).filter((f): f is string => !!f)));
   const tree = buildTree(folders);
   const noFolderCount = notes.filter((n) => !n.folder).length;
+  // En mobile el árbol arranca colapsado tras un botón: con ~35 carpetas,
+  // mostrarlo siempre desplegado (antes como tira horizontal de chips) era
+  // un caos. En desktop este botón no se ve (CSS) y el árbol siempre está.
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   function countFor(path: string) {
     return notes.filter((n) => n.folder === path || n.folder?.startsWith(path + "/")).length;
@@ -124,23 +129,32 @@ export default function BrainFolderTree({
     <div className="brain-tree">
       <button
         type="button"
-        className={"brain-tree-label brain-tree-root" + (selectedFolder === null ? " active" : "")}
-        onClick={() => onSelectFolder(null)}
+        className="brain-tree-mobile-toggle"
+        onClick={() => setMobileOpen((o) => !o)}
       >
-        🧠 Todas las notas <span className="brain-tree-count">{notes.length}</span>
+        📁 Carpetas {selectedFolder !== null ? "· filtrando" : ""} {mobileOpen ? "▾" : "▸"}
       </button>
-      {tree.map((n) => (
-        <TreeItem key={n.path} node={n} selected={selectedFolder} onSelect={onSelectFolder} depth={0} countFor={countFor} />
-      ))}
-      {noFolderCount > 0 && (
+      <div className={"brain-tree-body" + (mobileOpen ? "" : " brain-tree-body-collapsed")}>
         <button
           type="button"
-          className={"brain-tree-label" + (selectedFolder === "" ? " active" : "")}
-          onClick={() => onSelectFolder("")}
+          className={"brain-tree-label brain-tree-root" + (selectedFolder === null ? " active" : "")}
+          onClick={() => onSelectFolder(null)}
         >
-          — Sin carpeta <span className="brain-tree-count">{noFolderCount}</span>
+          🧠 Todas las notas <span className="brain-tree-count">{notes.length}</span>
         </button>
-      )}
+        {tree.map((n) => (
+          <TreeItem key={n.path} node={n} selected={selectedFolder} onSelect={onSelectFolder} depth={0} countFor={countFor} />
+        ))}
+        {noFolderCount > 0 && (
+          <button
+            type="button"
+            className={"brain-tree-label" + (selectedFolder === "" ? " active" : "")}
+            onClick={() => onSelectFolder("")}
+          >
+            — Sin carpeta <span className="brain-tree-count">{noFolderCount}</span>
+          </button>
+        )}
+      </div>
     </div>
   );
 }
