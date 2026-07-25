@@ -46,7 +46,7 @@ export default function BrainNoteEditor({
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [folder, setFolder] = useState(initialFolder ?? "");
-  const [mode, setMode] = useState<"edit" | "preview">("edit");
+  const [mode, setMode] = useState<"edit" | "preview">(isNew ? "edit" : "preview");
   const [error, setError] = useState<string | null>(null);
   const [currentId, setCurrentId] = useState<Id<"brainNotes"> | null>(
     isNew ? null : (noteId as Id<"brainNotes">),
@@ -56,7 +56,9 @@ export default function BrainNoteEditor({
 
   useEffect(() => {
     setCurrentId(isNew ? null : (noteId as Id<"brainNotes">));
-    setMode("edit");
+    // Las notas existentes se abren en LECTURA (markdown renderizado); las
+    // nuevas en edición para poder escribir directamente. "✎ Editar" alterna.
+    setMode(isNew ? "edit" : "preview");
   }, [noteId, isNew]);
 
   useEffect(() => {
