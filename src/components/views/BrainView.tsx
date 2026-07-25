@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -36,6 +36,26 @@ export default function BrainView() {
     if (selectedFolder === "") return !n.folder;
     return n.folder === selectedFolder || n.folder.startsWith(selectedFolder + "/");
   });
+
+  // Orden y estructura: agrupamos por carpeta y, dentro de cada grupo,
+  // ordenamos por título con orden numérico natural ("00 ·" < "02 ·",
+  // "Semana 2" < "Semana 10"). Antes se pintaba en orden de última edición,
+  // que se sentía como una pila desordenada. Las notas sin carpeta van al final.
+  const groupedNotes = useMemo(() => {
+    const nat = (a: string, b: string) =>
+      a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+    const sorted = [...visibleNotes].sort(
+      (a, b) => nat(a.folder || "￿", b.folder || "￿") || nat(a.title, b.title),
+    );
+    const groups: { folder: string; notes: NoteSummary[] }[] = [];
+    for (const n of sorted) {
+      const key = n.folder || "";
+      const last = groups[groups.length - 1];
+      if (last && last.folder === key) last.notes.push(n);
+      else groups.push({ folder: key, notes: [n] });
+    }
+    return groups;
+  }, [visibleNotes]);
 
   function openNote(id: Id<"brainNotes">) {
     setSelectedId(id);
@@ -101,7 +121,7 @@ export default function BrainView() {
               selectedFolder={selectedFolder}
               onSelectFolder={setSelectedFolder}
             />
-            <div className="brain-note-grid">
+            <div className="brain-note-groups">
               {visibleNotes.length === 0 && (
                 <p className="sidebar-empty">
                   {notes.length === 0
@@ -109,26 +129,35 @@ export default function BrainView() {
                     : "No hay notas en esta carpeta."}
                 </p>
               )}
-              {visibleNotes.map((n) => (
-                <button
-                  key={n._id}
-                  type="button"
-                  className="brain-note-card"
-                  onClick={() => openNote(n._id)}
-                >
-                  <div className="brain-note-card-title">{n.title}</div>
-                  {n.folder && <div className="brain-note-card-folder">📁 {n.folder}</div>}
-                  <div className="brain-note-card-snippet">{n.snippet}</div>
-                  {n.tags.length > 0 && (
-                    <div className="brain-note-card-tags">
-                      {n.tags.map((t) => (
-                        <span key={t} className="tag-chip">
-                          {t}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </button>
+              {groupedNotes.map((g) => (
+                <section className="brain-folder-group" key={g.folder || "__root__"}>
+                  <div className="brain-folder-group-head">
+                    <span>{g.folder ? `📂 ${g.folder}` : "— Sin carpeta"}</span>
+                    <span className="brain-folder-group-count">{g.notes.length}</span>
+                  </div>
+                  <div className="brain-note-grid">
+                    {g.notes.map((n) => (
+                      <button
+                        key={n._id}
+                        type="button"
+                        className="brain-note-card"
+                        onClick={() => openNote(n._id)}
+                      >
+                        <div className="brain-note-card-title">{n.title}</div>
+                        <div className="brain-note-card-snippet">{n.snippet}</div>
+                        {n.tags.length > 0 && (
+                          <div className="brain-note-card-tags">
+                            {n.tags.map((t) => (
+                              <span key={t} className="tag-chip">
+                                {t}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </section>
               ))}
             </div>
           </div>
