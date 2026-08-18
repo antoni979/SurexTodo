@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
-import { sortTasks } from "../../util";
 import Composer from "../Composer";
 import TaskScreen, { type TaskGroup } from "../TaskScreen";
 import TaskDetail from "../TaskDetail";
@@ -110,6 +109,10 @@ export default function TeamView({
   const team = useQuery(api.teams.getTeam, { teamId });
   const tasks = useQuery(api.tasks.listTeamTasks, { teamId, today });
   const createTask = useMutation(api.tasks.createTask);
+  const lists = useQuery(
+    api.lists.listMyLists,
+    team ? { workspaceId: team.workspaceId } : "skip",
+  ) ?? [];
   const [filter, setFilter] = useState<"all" | "mine" | "unassigned" | string>(
     "all",
   );
@@ -236,8 +239,8 @@ export default function TeamView({
     );
   }
 
-  const pending = sortTasks(filtered.filter((t) => !t.completed));
-  const done = sortTasks(filtered.filter((t) => t.completed));
+  const pending = filtered.filter((t) => !t.completed);
+  const done = filtered.filter((t) => t.completed);
   const groups: TaskGroup[] = [
     { tasks: pending },
     { label: "Completadas", tasks: done },
@@ -274,6 +277,7 @@ export default function TeamView({
           placeholder="Añadir una tarea de equipo"
           members={team.members}
           workspaceId={team.workspaceId}
+          lists={lists}
           onCreate={(d) =>
             createTask({
               title: d.title,
@@ -281,6 +285,7 @@ export default function TeamView({
               dueDate: d.dueDate,
               recurrence: d.recurrence,
               tags: d.tags,
+              listId: d.listId,
               teamId,
               assigneeId: d.assigneeId,
             }).then(() => undefined)

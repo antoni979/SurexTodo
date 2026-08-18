@@ -1,6 +1,6 @@
 import { useState, type ReactNode, isValidElement } from "react";
 import type { Id } from "../../convex/_generated/dataModel";
-import type { EnrichedTask } from "../util";
+import { applyTaskSort, type EnrichedTask, type TaskSortMode } from "../util";
 import TaskRow from "./TaskRow";
 import TaskDetail from "./TaskDetail";
 import BulkActionBar from "./BulkActionBar";
@@ -47,6 +47,9 @@ export default function TaskScreen({
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [sortMode, setSortMode] = useState<TaskSortMode>(
+    () => (localStorage.getItem("taskSortMode") as TaskSortMode) || "default",
+  );
 
   const q = search.trim().toLowerCase();
 
@@ -56,12 +59,15 @@ export default function TaskScreen({
 
   const filteredGroups = groups.map((g) => ({
     ...g,
-    tasks: g.tasks.filter((t) => {
-      if (!showDone && t.completed) return false;
-      if (activeTag && !(t.tags ?? []).includes(activeTag)) return false;
-      if (q) return t.title.toLowerCase().includes(q) || (t.note ?? "").toLowerCase().includes(q);
-      return true;
-    }),
+    tasks: applyTaskSort(
+      g.tasks.filter((t) => {
+        if (!showDone && t.completed) return false;
+        if (activeTag && !(t.tags ?? []).includes(activeTag)) return false;
+        if (q) return t.title.toLowerCase().includes(q) || (t.note ?? "").toLowerCase().includes(q);
+        return true;
+      }),
+      sortMode,
+    ),
   }));
 
   const doneCount = groups.flatMap((g) => g.tasks).filter((t) => t.completed).length;
@@ -160,6 +166,20 @@ export default function TaskScreen({
                 ? `Ocultar completadas${doneCount > 0 ? ` (${doneCount})` : ""}`
                 : `Mostrar completadas${doneCount > 0 ? ` (${doneCount})` : ""}`}
             </button>
+            <select
+              className="filter-select"
+              value={sortMode}
+              title="Ordenar por"
+              onChange={(e) => {
+                const next = e.target.value as TaskSortMode;
+                setSortMode(next);
+                localStorage.setItem("taskSortMode", next);
+              }}
+            >
+              <option value="default">Orden predeterminado (fecha)</option>
+              <option value="date_asc">Fecha ↑ (más próxima primero)</option>
+              <option value="date_desc">Fecha ↓ (más lejana primero)</option>
+            </select>
             <button
               className={"toggle-done-btn" + (selectMode ? " active" : "")}
               onClick={() => selectMode ? exitSelectMode() : setSelectMode(true)}

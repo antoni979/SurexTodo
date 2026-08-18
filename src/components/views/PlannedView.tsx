@@ -2,25 +2,9 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
-import {
-  type EnrichedTask,
-  type Priority,
-  PRIORITY_META,
-  dayDiff,
-} from "../../util";
+import { type EnrichedTask, dayDiff } from "../../util";
 import Composer from "../Composer";
 import TaskScreen, { type TaskGroup } from "../TaskScreen";
-
-function byDueThenPriority(today: string) {
-  return (a: EnrichedTask, b: EnrichedTask) => {
-    const d = (a.dueDate ?? "").localeCompare(b.dueDate ?? "");
-    if (d !== 0) return d;
-    return (
-      PRIORITY_META[b.priority as Priority].rank -
-      PRIORITY_META[a.priority as Priority].rank
-    );
-  };
-}
 
 export default function PlannedView({
   today,
@@ -51,8 +35,6 @@ export default function PlannedView({
     return true;
   });
 
-  const sorter = byDueThenPriority(today);
-
   const overdue: EnrichedTask[] = [];
   const todayTasks: EnrichedTask[] = [];
   const tomorrowTasks: EnrichedTask[] = [];
@@ -70,10 +52,6 @@ export default function PlannedView({
     else if (diff === 1) tomorrowTasks.push(t);
     else upcoming.push(t);
   }
-  [overdue, todayTasks, tomorrowTasks, upcoming, done].forEach((g) =>
-    g.sort(sorter),
-  );
-
   const groups: TaskGroup[] = [
     { label: "Vencidas", tasks: overdue },
     { label: "Hoy", tasks: todayTasks },
@@ -139,6 +117,7 @@ export default function PlannedView({
           workspaceId={workspaceId}
           placeholder="Añadir una tarea con vencimiento"
           defaultDueDate={today}
+          lists={lists}
           onCreate={(d) =>
             createTask({
               title: d.title,
@@ -146,6 +125,7 @@ export default function PlannedView({
               dueDate: d.dueDate,
               recurrence: d.recurrence,
               tags: d.tags,
+              listId: d.listId,
               ...(workspaceId ? { workspaceId } : {}),
             }).then(() => undefined)
           }

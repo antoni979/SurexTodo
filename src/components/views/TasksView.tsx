@@ -1,7 +1,6 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
-import { sortTasks } from "../../util";
 import Composer from "../Composer";
 import TaskScreen, { type TaskGroup } from "../TaskScreen";
 
@@ -19,10 +18,11 @@ export default function TasksView({
     ...(workspaceId ? { workspaceId } : {}),
   });
   const createTask = useMutation(api.tasks.createTask);
+  const lists = useQuery(api.lists.listMyLists, workspaceId ? { workspaceId } : {}) ?? [];
 
   const list = tasks ?? [];
-  const pending = sortTasks(list.filter((t) => !t.completed));
-  const done = sortTasks(list.filter((t) => t.completed));
+  const pending = list.filter((t) => !t.completed);
+  const done = list.filter((t) => t.completed);
 
   const groups: TaskGroup[] = [
     { tasks: pending },
@@ -49,6 +49,7 @@ export default function TasksView({
         <Composer
           workspaceId={workspaceId}
           placeholder="Añadir una tarea"
+          lists={lists}
           onCreate={(d) =>
             createTask({
               title: d.title,
@@ -56,6 +57,7 @@ export default function TasksView({
               dueDate: d.dueDate,
               recurrence: d.recurrence,
               tags: d.tags,
+              listId: d.listId,
               ...(workspaceId ? { workspaceId } : {}),
             }).then(() => undefined)
           }

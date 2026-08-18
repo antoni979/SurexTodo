@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { CloseIcon, PlusIcon } from "./icons";
@@ -63,8 +63,10 @@ function QuickTaskModal({
   onClose: () => void;
 }) {
   const createTask = useMutation(api.tasks.createTask);
+  const lists = useQuery(api.lists.listMyLists, workspaceId ? { workspaceId } : {}) ?? [];
   const [title, setTitle] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [listId, setListId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -79,6 +81,7 @@ function QuickTaskModal({
         title: t,
         priority: "media",
         dueDate: dueDate || undefined,
+        listId: listId ? (listId as Id<"lists">) : undefined,
         ...(workspaceId ? { workspaceId } : {}),
       });
       onClose();
@@ -112,6 +115,21 @@ function QuickTaskModal({
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
           />
+          {lists.length > 0 && (
+            <select
+              style={{ marginTop: 8 }}
+              value={listId}
+              onChange={(e) => setListId(e.target.value)}
+              title="Añadir a una lista"
+            >
+              <option value="">Sin lista</option>
+              {lists.map((l) => (
+                <option key={l._id} value={l._id}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
+          )}
           {error && <div className="composer-error">{error}</div>}
           <button type="submit" className="btn-primary btn-sm settings-goto" disabled={busy}>
             Crear tarea

@@ -2,22 +2,9 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
-import { sortTasks, type EnrichedTask, LIST_COLORS, DEFAULT_COLOR } from "../../util";
+import { LIST_COLORS, DEFAULT_COLOR } from "../../util";
 import Composer from "../Composer";
 import TaskScreen, { type TaskGroup } from "../TaskScreen";
-
-type SortMode = "default" | "date_asc" | "date_desc";
-
-function sortByDate(tasks: EnrichedTask[], dir: "asc" | "desc") {
-  return [...tasks].sort((a, b) => {
-    const da = a.dueDate ?? "";
-    const db = b.dueDate ?? "";
-    if (!da && !db) return 0;
-    if (!da) return 1;
-    if (!db) return -1;
-    return dir === "asc" ? da.localeCompare(db) : db.localeCompare(da);
-  });
-}
 
 export default function ListView({
   listId,
@@ -42,19 +29,12 @@ export default function ListView({
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [showColorPicker, setShowColorPicker] = useState(false);
-  const [sortMode, setSortMode] = useState<SortMode>("default");
 
   const color = list?.color ?? DEFAULT_COLOR;
   const taskList = tasks ?? [];
 
-  function applySort(arr: EnrichedTask[]) {
-    if (sortMode === "date_asc") return sortByDate(arr, "asc");
-    if (sortMode === "date_desc") return sortByDate(arr, "desc");
-    return sortTasks(arr);
-  }
-
-  const pending = applySort(taskList.filter((t) => !t.completed));
-  const done = applySort(taskList.filter((t) => t.completed));
+  const pending = taskList.filter((t) => !t.completed);
+  const done = taskList.filter((t) => t.completed);
 
   const groups: TaskGroup[] = [
     { tasks: pending },
@@ -108,17 +88,6 @@ export default function ListView({
           </div>
         )}
       </span>
-      <select
-        value={sortMode}
-        onChange={(e) => setSortMode(e.target.value as SortMode)}
-        className="filter-select"
-        title="Ordenar por"
-        style={{ marginLeft: 4 }}
-      >
-        <option value="default">Orden predeterminado</option>
-        <option value="date_asc">Fecha ↑ (más próxima primero)</option>
-        <option value="date_desc">Fecha ↓ (más lejana primero)</option>
-      </select>
       <button
         className="list-delete-btn"
         onClick={() => {

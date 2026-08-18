@@ -171,16 +171,54 @@ export function longToday(today: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-/** Sort: incomplete first, then by priority (high first), then newest. */
+/**
+ * Sort: incomplete first, then by due date (soonest first, no-date last),
+ * priority only breaks ties on the same day. Antes ordenaba por prioridad
+ * primero, así que una "urgente" de mañana adelantaba a una tarea normal
+ * de hoy — la fecha manda, la prioridad solo desempata.
+ */
 export function sortTasks(tasks: EnrichedTask[]): EnrichedTask[] {
   return [...tasks].sort((a, b) => {
     if (a.completed !== b.completed) return a.completed ? 1 : -1;
+    const da = a.dueDate ?? "";
+    const db = b.dueDate ?? "";
+    if (da !== db) {
+      if (!da) return 1;
+      if (!db) return -1;
+      return da.localeCompare(db);
+    }
     const pr =
       PRIORITY_META[b.priority as Priority].rank -
       PRIORITY_META[a.priority as Priority].rank;
     if (pr !== 0) return pr;
     return b._creationTime - a._creationTime;
   });
+}
+
+export type TaskSortMode = "default" | "date_asc" | "date_desc";
+
+/** Explicit date-only sort (used by the "Ordenar" control); no-date tasks always sink to the bottom. */
+export function sortTasksByDate(
+  tasks: EnrichedTask[],
+  dir: "asc" | "desc",
+): EnrichedTask[] {
+  return [...tasks].sort((a, b) => {
+    const da = a.dueDate ?? "";
+    const db = b.dueDate ?? "";
+    if (!da && !db) return 0;
+    if (!da) return 1;
+    if (!db) return -1;
+    return dir === "asc" ? da.localeCompare(db) : db.localeCompare(da);
+  });
+}
+
+export function applyTaskSort(
+  tasks: EnrichedTask[],
+  mode: TaskSortMode,
+): EnrichedTask[] {
+  if (mode === "date_asc") return sortTasksByDate(tasks, "asc");
+  if (mode === "date_desc") return sortTasksByDate(tasks, "desc");
+  return sortTasks(tasks);
 }
 
 /* ---------- project meta ---------- */

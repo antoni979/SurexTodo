@@ -18,9 +18,11 @@ export type ComposerData = {
   assigneeId?: Id<"users">;
   recurrence?: Recurrence;
   tags?: string[];
+  listId?: Id<"lists">;
 };
 
 type Member = { userId: Id<"users">; username: string };
+type ListOption = { _id: Id<"lists">; name: string };
 
 export default function Composer({
   members,
@@ -28,17 +30,21 @@ export default function Composer({
   placeholder = "Añadir una tarea",
   onCreate,
   workspaceId,
+  lists,
 }: {
   members?: Member[];
   defaultDueDate?: string;
   placeholder?: string;
   onCreate: (data: ComposerData) => Promise<void>;
   workspaceId?: Id<"workspaces"> | null;
+  /** Si se pasa, se muestra un selector para asignar la tarea a una lista al crearla. */
+  lists?: ListOption[];
 }) {
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState<Priority>("media");
   const [dueDate, setDueDate] = useState(defaultDueDate ?? "");
   const [assigneeId, setAssigneeId] = useState<string>("");
+  const [listId, setListId] = useState<string>("");
   const [recurrence, setRecurrence] = useState<Recurrence | undefined>(
     undefined,
   );
@@ -80,6 +86,7 @@ export default function Composer({
           assigneeId: assigneeId ? (assigneeId as Id<"users">) : undefined,
           recurrence,
           tags: tags.length > 0 ? tags : undefined,
+          listId: listId ? (listId as Id<"lists">) : undefined,
         }),
         watchdog,
       ]);
@@ -89,6 +96,7 @@ export default function Composer({
       setPriority("media");
       setDueDate(defaultDueDate ?? "");
       setAssigneeId("");
+      setListId("");
       setRecurrence(undefined);
       setTags([]);
       setTagInput("");
@@ -167,6 +175,20 @@ export default function Composer({
             {members.map((m) => (
               <option key={m.userId} value={m.userId}>
                 {m.username}
+              </option>
+            ))}
+          </select>
+        )}
+        {lists && lists.length > 0 && (
+          <select
+            value={listId}
+            onChange={(e) => setListId(e.target.value)}
+            title="Añadir a una lista"
+          >
+            <option value="">Sin lista</option>
+            {lists.map((l) => (
+              <option key={l._id} value={l._id}>
+                {l.name}
               </option>
             ))}
           </select>

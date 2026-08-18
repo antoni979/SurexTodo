@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
-import { sortTasks, longToday } from "../../util";
+import { longToday } from "../../util";
 import Composer from "../Composer";
 import TaskScreen, { type TaskGroup } from "../TaskScreen";
 
@@ -19,10 +19,11 @@ export default function MyDayView({
     ...(workspaceId ? { workspaceId } : {}),
   });
   const createTask = useMutation(api.tasks.createTask);
+  const lists = useQuery(api.lists.listMyLists, workspaceId ? { workspaceId } : {}) ?? [];
 
   const list = tasks ?? [];
-  const pending = sortTasks(list.filter((t) => !t.completed));
-  const done = sortTasks(list.filter((t) => t.completed));
+  const pending = list.filter((t) => !t.completed);
+  const done = list.filter((t) => t.completed);
 
   const groups: TaskGroup[] = [
     { tasks: pending },
@@ -45,6 +46,7 @@ export default function MyDayView({
         <Composer
           workspaceId={workspaceId}
           placeholder="Añadir una tarea a Mi día"
+          lists={lists}
           onCreate={(d) =>
             createTask({
               title: d.title,
@@ -52,6 +54,7 @@ export default function MyDayView({
               dueDate: d.dueDate,
               recurrence: d.recurrence,
               tags: d.tags,
+              listId: d.listId,
               addToMyDay: true,
               today,
               ...(workspaceId ? { workspaceId } : {}),
