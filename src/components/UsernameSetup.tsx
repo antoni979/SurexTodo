@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { api } from "../../convex/_generated/api";
+import { forgetUser } from "../lib/queryCache";
 
 export default function UsernameSetup() {
   const setUsername = useMutation(api.profiles.setUsername);
@@ -59,7 +60,14 @@ export default function UsernameSetup() {
           </button>
         </form>
 
-        <button type="button" className="auth-switch" onClick={() => signOut()}>
+        <button
+          type="button"
+          className="auth-switch"
+          onClick={() => {
+            forgetUser();
+            void signOut();
+          }}
+        >
           Cerrar sesión
         </button>
       </div>

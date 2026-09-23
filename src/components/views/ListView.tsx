@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useMutation } from "convex/react";
+import { useCachedQuery } from "../../hooks/useCachedQuery";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { LIST_COLORS, DEFAULT_COLOR } from "../../util";
@@ -17,10 +18,10 @@ export default function ListView({
   onOpenProject?: (projectId: Id<"tasks">) => void;
   workspaceId?: Id<"workspaces"> | null;
 }) {
-  const lists = useQuery(api.lists.listMyLists, workspaceId ? { workspaceId } : {}) ?? [];
+  const lists = useCachedQuery(api.lists.listMyLists, workspaceId ? { workspaceId } : {}) ?? [];
   const list = lists.find((l) => l._id === listId);
 
-  const tasks = useQuery(api.tasks.listByList, { listId, today });
+  const tasks = useCachedQuery(api.tasks.listByList, { listId, today });
   const createTask = useMutation(api.tasks.createTask);
   const renameList = useMutation(api.lists.renameList);
   const setListColor = useMutation(api.lists.setListColor);

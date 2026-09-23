@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "convex/react";
+import { useCachedQuery } from "../../hooks/useCachedQuery";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { type EnrichedTask, type Priority, PRIORITY_META, dayDiff } from "../../util";
@@ -38,7 +38,7 @@ export default function CalendarView({
   const [selectedDate, setSelectedDate] = useState<string | null>(today);
   const [modalTask, setModalTask] = useState<EnrichedTask | null>(null);
 
-  const tasks = useQuery(api.tasks.listPlanned, {
+  const tasks = useCachedQuery(api.tasks.listPlanned, {
     today,
     ...(workspaceId ? { workspaceId } : {}),
   }) ?? [];

@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useMutation } from "convex/react";
+import { useCachedQuery } from "../hooks/useCachedQuery";
+import { forgetUser } from "../lib/queryCache";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -43,10 +45,10 @@ export default function Sidebar({
   onEnableNotifications: () => void;
   onDisableNotifications: () => void;
 }) {
-  const workspaces = useQuery(api.workspaces.listMyWorkspaces) ?? [];
-  const teams = useQuery(api.teams.listMyTeams, workspaceId ? { workspaceId } : {}) ?? [];
-  const projects = useQuery(api.projects.listMyProjects, workspaceId ? { workspaceId } : {}) ?? [];
-  const lists = useQuery(api.lists.listMyLists, workspaceId ? { workspaceId } : {}) ?? [];
+  const workspaces = useCachedQuery(api.workspaces.listMyWorkspaces, {}) ?? [];
+  const teams = useCachedQuery(api.teams.listMyTeams, workspaceId ? { workspaceId } : {}) ?? [];
+  const projects = useCachedQuery(api.projects.listMyProjects, workspaceId ? { workspaceId } : {}) ?? [];
+  const lists = useCachedQuery(api.lists.listMyLists, workspaceId ? { workspaceId } : {}) ?? [];
   const createList = useMutation(api.lists.createList);
   const { signOut } = useAuthActions();
   const [showNewTeam, setShowNewTeam] = useState(false);
@@ -376,7 +378,12 @@ export default function Sidebar({
         <button
           className="icon-btn"
           title="Cerrar sesión"
-          onClick={() => signOut()}
+          onClick={() => {
+            // Borrar antes de cerrar sesión: nada de la cuenta anterior debe
+            // sobrevivir en el dispositivo para el siguiente que entre.
+            forgetUser();
+            void signOut();
+          }}
         >
           <LogoutIcon size={18} />
         </button>

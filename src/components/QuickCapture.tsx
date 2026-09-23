@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useCachedQuery } from "../hooks/useCachedQuery";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { CloseIcon, PlusIcon } from "./icons";
@@ -63,7 +64,7 @@ function QuickTaskModal({
   onClose: () => void;
 }) {
   const createTask = useMutation(api.tasks.createTask);
-  const lists = useQuery(api.lists.listMyLists, workspaceId ? { workspaceId } : {}) ?? [];
+  const lists = useCachedQuery(api.lists.listMyLists, workspaceId ? { workspaceId } : {}) ?? [];
   const [title, setTitle] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [listId, setListId] = useState("");

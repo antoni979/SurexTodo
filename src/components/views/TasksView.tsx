@@ -1,4 +1,5 @@
-import { useQuery, useMutation } from "convex/react";
+import { useMutation } from "convex/react";
+import { useCachedQuery } from "../../hooks/useCachedQuery";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import Composer from "../Composer";
@@ -13,12 +14,12 @@ export default function TasksView({
   onOpenProject?: (projectId: Id<"tasks">) => void;
   workspaceId?: Id<"workspaces"> | null;
 }) {
-  const tasks = useQuery(api.tasks.listPersonal, {
+  const tasks = useCachedQuery(api.tasks.listPersonal, {
     today,
     ...(workspaceId ? { workspaceId } : {}),
   });
   const createTask = useMutation(api.tasks.createTask);
-  const lists = useQuery(api.lists.listMyLists, workspaceId ? { workspaceId } : {}) ?? [];
+  const lists = useCachedQuery(api.lists.listMyLists, workspaceId ? { workspaceId } : {}) ?? [];
 
   const list = tasks ?? [];
   const pending = list.filter((t) => !t.completed);

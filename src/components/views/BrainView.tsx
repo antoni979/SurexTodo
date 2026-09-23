@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "convex/react";
+import { useCachedQuery } from "../../hooks/useCachedQuery";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { SearchIcon, PlusIcon } from "../icons";
@@ -25,8 +25,8 @@ export default function BrainView() {
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
 
   const notes: NoteSummary[] =
-    useQuery(api.brain.listMyNotes, { search: search || undefined }) ?? [];
-  const allTitlesQuery: NoteSummary[] = useQuery(api.brain.listMyNotes, {}) ?? [];
+    useCachedQuery(api.brain.listMyNotes, { search: search || undefined }) ?? [];
+  const allTitlesQuery: NoteSummary[] = useCachedQuery(api.brain.listMyNotes, {}) ?? [];
   const allFolders = Array.from(
     new Set(allTitlesQuery.map((n) => n.folder).filter(Boolean)),
   ).sort();

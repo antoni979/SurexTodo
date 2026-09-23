@@ -2822,6 +2822,60 @@ input[type="date"]:hover::-webkit-calendar-picker-indicator {
   font-size: 14px;
 }
 
+/* Esqueleto de carga: solo aparece la primerísima vez en un dispositivo,
+   cuando todavía no hay nada en la caché local de queries. */
+.skeleton-screen {
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.skeleton-line {
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    var(--border) 25%,
+    var(--sidebar-bg) 37%,
+    var(--border) 63%
+  );
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  width: 60%;
+}
+.skeleton-title {
+  height: 22px;
+  width: 38%;
+  margin-bottom: 10px;
+}
+.skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.skeleton-check {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--border);
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-line,
+  .skeleton-check {
+    animation: none;
+  }
+}
+
 /* El campo de etiqueta del composer es secundario: compacto y punteado para
    que no se confunda con el campo del título de la tarea. */
 .composer-tags .tag-input {

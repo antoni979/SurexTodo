@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useQuery } from "convex/react";
+import { useCachedQuery } from "../hooks/useCachedQuery";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import {
@@ -58,7 +58,7 @@ export default function Composer({
   const titleRef = useRef<HTMLInputElement>(null);
 
   const allTags =
-    useQuery(api.tasks.listAllTags, workspaceId ? { workspaceId } : {}) ?? [];
+    useCachedQuery(api.tasks.listAllTags, workspaceId ? { workspaceId } : {}) ?? [];
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

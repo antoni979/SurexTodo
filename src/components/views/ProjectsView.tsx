@@ -1,4 +1,4 @@
-import { useQuery } from "convex/react";
+import { useCachedQuery } from "../../hooks/useCachedQuery";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import {
@@ -16,7 +16,7 @@ export default function ProjectsView({
   onOpen: (projectId: Id<"tasks">) => void;
   workspaceId?: Id<"workspaces"> | null;
 }) {
-  const projects = useQuery(api.projects.listMyProjects, {
+  const projects = useCachedQuery(api.projects.listMyProjects, {
     ...(workspaceId ? { workspaceId } : {}),
   });
 

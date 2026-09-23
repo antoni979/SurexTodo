@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useMutation } from "convex/react";
+import { useCachedQuery } from "../../hooks/useCachedQuery";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { type EnrichedTask, dayDiff } from "../../util";
@@ -15,14 +16,14 @@ export default function PlannedView({
   onOpenProject?: (projectId: Id<"tasks">) => void;
   workspaceId?: Id<"workspaces"> | null;
 }) {
-  const tasks = useQuery(api.tasks.listPlanned, {
+  const tasks = useCachedQuery(api.tasks.listPlanned, {
     today,
     ...(workspaceId ? { workspaceId } : {}),
   });
   const createTask = useMutation(api.tasks.createTask);
-  const lists = useQuery(api.lists.listMyLists, workspaceId ? { workspaceId } : {}) ?? [];
+  const lists = useCachedQuery(api.lists.listMyLists, workspaceId ? { workspaceId } : {}) ?? [];
   const allTags =
-    useQuery(api.tasks.listAllTags, workspaceId ? { workspaceId } : {}) ?? [];
+    useCachedQuery(api.tasks.listAllTags, workspaceId ? { workspaceId } : {}) ?? [];
 
   const [filterListId, setFilterListId] = useState<string>("");
   const [filterTag, setFilterTag] = useState<string>("");

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { localToday } from "../util";
 import { useTaskNotifications } from "../hooks/useTaskNotifications";
+import { useCachedQuery } from "../hooks/useCachedQuery";
 import Sidebar from "./Sidebar";
 import MyDayView from "./views/MyDayView";
 import PlannedView from "./views/PlannedView";
@@ -28,6 +28,21 @@ export type View =
   | { kind: "list"; listId: Id<"lists"> }
   | { kind: "brain" };
 
+/** Esqueleto con la forma de una lista de tareas, para no enseñar un hueco vacío. */
+function TaskListSkeleton() {
+  return (
+    <div className="skeleton-screen" aria-hidden="true">
+      <div className="skeleton-line skeleton-title" />
+      {[0, 1, 2, 3, 4].map((i) => (
+        <div key={i} className="skeleton-row">
+          <div className="skeleton-check" />
+          <div className="skeleton-line" style={{ width: `${70 - i * 8}%` }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function MainApp({
   username,
   userId,
@@ -50,7 +65,7 @@ export default function MainApp({
       return saved ? (saved as Id<"workspaces">) : null;
     },
   );
-  const workspacesResult = useQuery(api.workspaces.listMyWorkspaces);
+  const workspacesResult = useCachedQuery(api.workspaces.listMyWorkspaces, {});
   const workspacesLoading = workspacesResult === undefined;
   const workspaces = workspacesResult ?? [];
 
@@ -102,7 +117,7 @@ export default function MainApp({
     useTaskNotifications({ today, workspaceId });
 
   // If we're viewing a list that no longer exists, go back to tasks
-  const lists = useQuery(api.lists.listMyLists, workspaceId ? { workspaceId } : {}) ?? [];
+  const lists = useCachedQuery(api.lists.listMyLists, workspaceId ? { workspaceId } : {}) ?? [];
   useEffect(() => {
     if (view.kind === "list" && lists.length > 0) {
       const exists = lists.some((l) => l._id === view.listId);
@@ -151,7 +166,11 @@ export default function MainApp({
       </button>
       <main className="content">
         {workspacesLoading ? (
-          <div className="ws-loading">Cargando tu espacio…</div>
+          // Solo se ve en la primerísima carga del dispositivo: a partir de
+          // ahí la lista de entornos sale de la caché y esto no llega a
+          // pintarse. Seguimos esperando porque sin entorno las vistas
+          // consultarían el espacio equivocado.
+          <TaskListSkeleton />
         ) : (
         <>
         {view.kind === "myday" && (

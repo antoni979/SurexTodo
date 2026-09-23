@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useMutation } from "convex/react";
+import { useCachedQuery } from "../../hooks/useCachedQuery";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import Composer from "../Composer";
@@ -21,7 +22,7 @@ function TeamBar({
   isOwner: boolean;
 }) {
   const addMember = useMutation(api.teams.addMember);
-  const addable = useQuery(api.teams.listAddableUsers, { teamId }) ?? [];
+  const addable = useCachedQuery(api.teams.listAddableUsers, { teamId }) ?? [];
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -106,10 +107,10 @@ export default function TeamView({
   myUserId: Id<"users">;
   onOpenProject?: (projectId: Id<"tasks">) => void;
 }) {
-  const team = useQuery(api.teams.getTeam, { teamId });
-  const tasks = useQuery(api.tasks.listTeamTasks, { teamId, today });
+  const team = useCachedQuery(api.teams.getTeam, { teamId });
+  const tasks = useCachedQuery(api.tasks.listTeamTasks, { teamId, today });
   const createTask = useMutation(api.tasks.createTask);
-  const lists = useQuery(
+  const lists = useCachedQuery(
     api.lists.listMyLists,
     team ? { workspaceId: team.workspaceId } : "skip",
   ) ?? [];
