@@ -13,6 +13,129 @@ export const listProfiles = query({
   },
 });
 
+// Radiografía de uso, solo recuentos agregados (nunca títulos ni contenido
+// de nadie). Sirve para decidir con datos si la forma de organizar tareas
+// que tenemos montada se está usando de verdad o sobra la mitad. CLI-only.
+export const usageStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const [tasks, lists, teams, workspaces, myDay, milestones, links, profiles] =
+      await Promise.all([
+        ctx.db.query("tasks").collect(),
+        ctx.db.query("lists").collect(),
+        ctx.db.query("teams").collect(),
+        ctx.db.query("workspaces").collect(),
+        ctx.db.query("myDay").collect(),
+        ctx.db.query("milestones").collect(),
+        ctx.db.query("projectLinks").collect(),
+        ctx.db.query("profiles").collect(),
+      ]);
+
+    const nameOf = new Map(profiles.map((p) => [p.userId, p.username]));
+    const wsName = new Map(workspaces.map((w) => [w._id, w.name]));
+
+    const projects = tasks.filter((t) => t.isProject);
+    const projectIds = new Set(projects.map((t) => t._id));
+    const children = tasks.filter((t) => t.parentTaskId);
+    const projectChildren = children.filter((t) => projectIds.has(t.parentTaskId!));
+    const subtasks = children.filter((t) => !projectIds.has(t.parentTaskId!));
+    const topLevel = tasks.filter((t) => !t.parentTaskId && !t.isProject);
+
+    const taskIdsInMyDay = new Set(myDay.map((m) => m.taskId));
+    const now = Date.now();
+    const DAY = 86400000;
+
+    // Tareas sueltas: sin lista, sin equipo, sin etiquetas y sin fecha.
+    // Si son mayoría, la app funciona de hecho como una bandeja plana.
+    const huerfanas = topLevel.filter(
+      (t) =>
+        !t.listId &&
+        !t.teamId &&
+        !(t.tags && t.tags.length > 0) &&
+        !t.dueDate,
+    );
+
+    const pendientes = topLevel.filter((t) => !t.completed);
+
+    const porUsuario = [...nameOf.entries()].map(([userId, username]) => {
+      const mias = tasks.filter((t) => t.creatorId === userId);
+      return {
+        username,
+        total: mias.length,
+        pendientes: mias.filter((t) => !t.completed && !t.isProject).length,
+        proyectos: mias.filter((t) => t.isProject).length,
+      };
+    });
+
+    return {
+      entornos: workspaces.map((w) => ({
+        nombre: w.name,
+        tareas: tasks.filter((t) => t.workspaceId === w._id).length,
+      })),
+      tareas: {
+        total: tasks.length,
+        raiz: topLevel.length,
+        pendientesRaiz: pendientes.length,
+        subtareas: subtasks.length,
+        dentroDeProyecto: projectChildren.length,
+      },
+      clasificacion: {
+        conLista: topLevel.filter((t) => t.listId).length,
+        conEquipo: topLevel.filter((t) => t.teamId).length,
+        conEtiquetas: topLevel.filter((t) => t.tags && t.tags.length > 0).length,
+        conFecha: topLevel.filter((t) => t.dueDate).length,
+        conRecurrencia: topLevel.filter((t) => t.recurrence).length,
+        conNota: topLevel.filter((t) => t.note && t.note.trim()).length,
+        enMiDiaAlgunaVez: topLevel.filter((t) => taskIdsInMyDay.has(t._id)).length,
+        sinClasificarDeNinguna: huerfanas.length,
+      },
+      proyectos: {
+        total: projects.length,
+        porEstado: projects.reduce<Record<string, number>>((acc, p) => {
+          const k = p.projectStatus ?? "sin_estado";
+          acc[k] = (acc[k] ?? 0) + 1;
+          return acc;
+        }, {}),
+        conHitos: new Set(milestones.map((m) => m.projectId)).size,
+        conEnlaces: new Set(links.map((l) => l.projectId)).size,
+        sinNingunaTarea: projects.filter(
+          (p) => !projectChildren.some((c) => c.parentTaskId === p._id),
+        ).length,
+        tareasPorProyecto: projects.map((p) => ({
+          entorno: p.workspaceId ? wsName.get(p.workspaceId) ?? "?" : "personal",
+          estado: p.projectStatus ?? "sin_estado",
+          tareas: projectChildren.filter((c) => c.parentTaskId === p._id).length,
+          hitos: milestones.filter((m) => m.projectId === p._id).length,
+        })),
+      },
+      listas: {
+        total: lists.length,
+        vacias: lists.filter((l) => !tasks.some((t) => t.listId === l._id)).length,
+        tareasPorLista: lists.map((l) => ({
+          entorno: l.workspaceId ? wsName.get(l.workspaceId) ?? "?" : "personal",
+          tareas: tasks.filter((t) => t.listId === l._id).length,
+        })),
+      },
+      equipos: teams.map((t) => ({
+        entorno: t.workspaceId ? wsName.get(t.workspaceId) ?? "?" : "personal",
+        tareas: tasks.filter((x) => x.teamId === t._id).length,
+      })),
+      antiguedadPendientes: {
+        vencidas: pendientes.filter(
+          (t) => t.dueDate && t.dueDate < new Date().toISOString().slice(0, 10),
+        ).length,
+        creadasHaceMasDe30d: pendientes.filter(
+          (t) => now - t._creationTime > 30 * DAY,
+        ).length,
+        creadasHaceMasDe90d: pendientes.filter(
+          (t) => now - t._creationTime > 90 * DAY,
+        ).length,
+      },
+      porUsuario,
+    };
+  },
+});
+
 // List all workspaces (CLI use only)
 export const listWorkspaces = query({
   args: {},
