@@ -1,6 +1,6 @@
-import { mutation, query, action, internalMutation } from "./_generated/server";
+import { mutation, query, action, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
-import { createAccount } from "@convex-dev/auth/server";
+import { createAccount, modifyAccountCredentials } from "@convex-dev/auth/server";
 import { internal } from "./_generated/api";
 import { insertBrainNoteWithDedup, recomputeLinks } from "./brain";
 
@@ -306,6 +306,52 @@ export const finishUserSetup = internalMutation({
     if (!wsMember) {
       await ctx.db.insert("workspaceMembers", { workspaceId, userId });
     }
+  },
+});
+
+// Busca la cuenta "password" de un usuario por username EXACTO. Falla fuerte
+// si no hay username o no hay cuenta de contraseña — nunca hay owner por
+// defecto. Solo lo usa resetUserPassword (CLI-only) para resolver el
+// providerAccountId (el email) sin exponer nada al cliente.
+export const findPasswordAccountByUsername = internalQuery({
+  args: { username: v.string() },
+  handler: async (ctx, { username }) => {
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_username", (q) => q.eq("username", username))
+      .unique();
+    if (!profile) {
+      throw new Error(`Username "${username}" no encontrado (exacto). Abortado sin tocar nada.`);
+    }
+    const account = await ctx.db
+      .query("authAccounts")
+      .withIndex("userIdAndProvider", (q) =>
+        q.eq("userId", profile.userId).eq("provider", "password"),
+      )
+      .unique();
+    if (!account) {
+      throw new Error(`"${username}" no tiene cuenta de tipo contraseña. Abortado.`);
+    }
+    return { username: profile.username, email: account.providerAccountId };
+  },
+});
+
+// Resetea la contraseña de UN usuario, identificado por username EXACTO
+// (mismo criterio estricto que el resto de este archivo). CLI-only, nunca
+// expuesto al cliente — usa la API oficial de @convex-dev/auth para
+// re-hashear el secreto en su cuenta "password".
+export const resetUserPassword = action({
+  args: { username: v.string(), newPassword: v.string() },
+  handler: async (ctx, { username, newPassword }): Promise<{ username: string; email: string }> => {
+    const { username: exactUsername, email } = await ctx.runQuery(
+      internal.adminOps.findPasswordAccountByUsername,
+      { username },
+    );
+    await modifyAccountCredentials(ctx, {
+      provider: "password",
+      account: { id: email, secret: newPassword },
+    });
+    return { username: exactUsername, email };
   },
 });
 
