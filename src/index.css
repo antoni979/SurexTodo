@@ -2822,6 +2822,47 @@ input[type="date"]:hover::-webkit-calendar-picker-indicator {
   font-size: 14px;
 }
 
+/* Aviso de trabajo sin conexión. Abajo a la izquierda para no chocar con el
+   botón de captura rápida, que vive abajo a la derecha. */
+.conn-status {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: #422006;
+  color: #fde68a;
+  font-size: 12.5px;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+.conn-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f59e0b;
+  flex-shrink: 0;
+  animation: conn-pulse 1.8s ease-in-out infinite;
+}
+@keyframes conn-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .conn-dot { animation: none; }
+}
+
+/* Confirmación de que la tarea quedó guardada y se enviará al reconectar. */
+.composer-queued {
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: #92400e;
+}
+
 /* Esqueleto de carga: solo aparece la primerísima vez en un dispositivo,
    cuando todavía no hay nada en la caché local de queries. */
 .skeleton-screen {

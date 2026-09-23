@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useConvexConnectionState } from "convex/react";
 import { useCachedQuery } from "../hooks/useCachedQuery";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -53,6 +54,8 @@ export default function Composer({
   const [tagFocused, setTagFocused] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [queued, setQueued] = useState(false);
+  const { isWebSocketConnected } = useConvexConnectionState();
   // Ref al input real: leemos el título del DOM al enviar, por si una extensión
   // del navegador modifica el campo sin disparar el onChange de React.
   const titleRef = useRef<HTMLInputElement>(null);
@@ -70,27 +73,19 @@ export default function Composer({
     if (!finalTitle || busy) return;
     setBusy(true);
     setError(null);
-    try {
-      // Watchdog: evita quedarse colgado en silencio si la red/sesión falla.
-      const watchdog = new Promise<never>((_, reject) =>
-        setTimeout(
-          () => reject(new Error("Sin respuesta del servidor. Comprueba tu conexión.")),
-          8000,
-        ),
-      );
-      await Promise.race([
-        onCreate({
-          title: finalTitle,
-          priority,
-          dueDate: dueDate || undefined,
-          assigneeId: assigneeId ? (assigneeId as Id<"users">) : undefined,
-          recurrence,
-          tags: tags.length > 0 ? tags : undefined,
-          listId: listId ? (listId as Id<"lists">) : undefined,
-        }),
-        watchdog,
-      ]);
-      // Reset (estado + DOM)
+    setQueued(false);
+
+    const inflight = onCreate({
+      title: finalTitle,
+      priority,
+      dueDate: dueDate || undefined,
+      assigneeId: assigneeId ? (assigneeId as Id<"users">) : undefined,
+      recurrence,
+      tags: tags.length > 0 ? tags : undefined,
+      listId: listId ? (listId as Id<"lists">) : undefined,
+    });
+
+    function resetForm() {
       setTitle("");
       if (titleRef.current) titleRef.current.value = "";
       setPriority("media");
@@ -100,6 +95,40 @@ export default function Composer({
       setRecurrence(undefined);
       setTags([]);
       setTagInput("");
+    }
+
+    // Sin conexión no tiene sentido esperar: el cliente de Convex guarda la
+    // mutación y la reenvía él solo al reconectar. Antes esperábamos 8s y
+    // luego decíamos "sin respuesta del servidor", así que parecía que la
+    // tarea se había perdido cuando en realidad estaba en cola.
+    if (!isWebSocketConnected) {
+      void inflight.catch(() => {
+        /* se reintenta al reconectar */
+      });
+      resetForm();
+      setQueued(true);
+      setBusy(false);
+      return;
+    }
+
+    const TIMED_OUT = Symbol("timeout");
+    try {
+      const outcome = await Promise.race([
+        inflight.then(() => "ok" as const),
+        new Promise<typeof TIMED_OUT>((resolve) =>
+          setTimeout(() => resolve(TIMED_OUT), 6000),
+        ),
+      ]);
+      resetForm();
+      if (outcome === TIMED_OUT) {
+        // Tarda más de la cuenta, pero sigue encolada: liberamos el
+        // formulario y avisamos, en vez de dar por fallido algo que va a
+        // llegar. Si acaba fallando de verdad, se muestra el error.
+        setQueued(true);
+        void inflight.catch((err) =>
+          setError(err instanceof Error ? err.message : "No se pudo crear"),
+        );
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo crear");
     } finally {
@@ -249,6 +278,11 @@ export default function Composer({
         </div>
       </div>
 
+      {queued && !error && (
+        <div className="composer-queued">
+          Guardada. Se enviará sola en cuanto vuelva la conexión.
+        </div>
+      )}
       {error && <div className="composer-error">{error}</div>}
     </form>
   );

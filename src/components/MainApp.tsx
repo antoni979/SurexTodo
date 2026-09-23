@@ -15,6 +15,7 @@ import ListView from "./views/ListView";
 import CalendarView from "./views/CalendarView";
 import BrainView from "./views/BrainView";
 import QuickCapture from "./QuickCapture";
+import ConnectionStatus from "./ConnectionStatus";
 import { MenuIcon } from "./icons";
 
 export type View =
@@ -211,6 +212,7 @@ export default function MainApp({
         </>
         )}
       </main>
+      <ConnectionStatus />
       {!workspacesLoading && <QuickCapture workspaceId={workspaceId} />}
     </div>
   );
