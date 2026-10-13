@@ -149,3 +149,31 @@ export const LogoutIcon = svg(
     <path d="M16 17l5-5-5-5M21 12H9" />
   </>,
 );
+
+export const DotsIcon = svg(
+  <>
+    <circle cx="5" cy="12" r="1" />
+    <circle cx="12" cy="12" r="1" />
+    <circle cx="19" cy="12" r="1" />
+  </>,
+);
+
+export const SortIcon = svg(
+  <>
+    <path d="M3 9l4-4 4 4" />
+    <path d="M7 5v14" />
+    <path d="M21 15l-4 4-4-4" />
+    <path d="M17 19V5" />
+  </>,
+);
+
+export const SubtasksIcon = svg(
+  <>
+    <path d="M3.5 5.5l1.5 1.5 2.5-2.5" />
+    <path d="M3.5 11.5l1.5 1.5 2.5-2.5" />
+    <path d="M3.5 17.5l1.5 1.5 2.5-2.5" />
+    <path d="M11 6h9" />
+    <path d="M11 12h9" />
+    <path d="M11 18h9" />
+  </>,
+);

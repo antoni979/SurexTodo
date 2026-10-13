@@ -3411,3 +3411,458 @@ input[type="date"]:hover::-webkit-calendar-picker-indicator {
     overflow-y: auto;
   }
 }
+
+/* =====================================================================
+   Lista compacta (oct-2026)
+   Una línea por tarea, filtros arriba, + flotante que abre una hoja.
+   Va al final del fichero a propósito: sustituye a los estilos antiguos de
+   cabecera, fila y composer sin tener que tocarlos uno a uno.
+   ===================================================================== */
+
+.screen {
+  position: relative;
+}
+
+/* ---- cabecera ---- */
+.screen-head {
+  padding: 22px 32px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+.head-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.head-titles {
+  flex: 1;
+  min-width: 0;
+}
+.screen-head h1 {
+  font-size: 24px;
+  line-height: 1.2;
+}
+.screen-sub {
+  margin-top: 2px;
+}
+.head-btn {
+  color: var(--text-soft);
+  padding: 8px;
+  border-radius: 8px;
+}
+.head-btn.on {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.head-menu-wrap {
+  position: relative;
+}
+.menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+.head-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 41;
+  min-width: 190px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+}
+.head-menu button {
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 10px 12px;
+  border-radius: 7px;
+  font-size: 14px;
+  color: var(--text);
+}
+.head-menu button:hover {
+  background: var(--sidebar-bg);
+}
+.head-search {
+  max-width: none;
+  margin-top: 10px;
+}
+
+/* Filtros: una sola fila que se desliza en horizontal en el móvil. */
+.filter-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.filter-row::-webkit-scrollbar {
+  display: none;
+}
+.filter-row .filter-chip {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: 12.5px;
+  padding: 5px 11px;
+  border-radius: 999px;
+}
+.header-extra {
+  margin-top: 8px;
+}
+
+/* ---- lista ---- */
+.screen-scroll {
+  padding: 14px 32px 110px; /* hueco abajo para que el + no tape la última tarea */
+}
+.task-group {
+  margin-bottom: 14px;
+}
+.group-label {
+  padding: 6px 4px 6px;
+  font-size: 12.5px;
+}
+.task-list {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.task-swipe {
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border);
+}
+.task-swipe:last-child {
+  border-bottom: none;
+}
+.task-row {
+  position: relative;
+  min-height: 46px;
+  padding: 0 14px;
+  gap: 12px;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: var(--surface);
+  touch-action: pan-y; /* el scroll vertical sigue siendo nativo */
+  transition: transform 0.2s ease, background 0.12s;
+}
+.task-row.dragging {
+  transition: none;
+}
+.task-row:hover {
+  background: #fafaf9;
+  border-color: transparent;
+}
+.task-row.selected {
+  background: var(--accent-soft);
+  box-shadow: none;
+}
+.task-row.bulk-selected {
+  background: var(--accent-soft);
+}
+.check {
+  width: 20px;
+  height: 20px;
+  border-width: 2px;
+  border-color: #c4c4c4;
+}
+.task-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 14.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: normal;
+}
+.task-title-icon {
+  vertical-align: -2px;
+  margin-right: 6px;
+  color: var(--text-muted);
+}
+.task-side {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  font-size: 12.5px;
+  color: var(--text-soft);
+}
+.task-ico {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.task-ico.myday {
+  color: #e8a500;
+}
+.task-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #e5f3ec;
+  color: #2d7d52;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.task-due.today {
+  color: var(--accent);
+  font-weight: 600;
+}
+.task-due.overdue {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+/* Fondo que asoma al deslizar una fila. */
+.task-swipe-bg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+}
+.task-swipe-bg span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0.75;
+  transition: opacity 0.1s;
+}
+.task-swipe-bg.armed span {
+  opacity: 1;
+}
+.task-swipe-bg .right {
+  margin-left: auto;
+}
+.task-swipe-bg.to-myday {
+  background: #d97706;
+}
+.task-swipe-bg.to-done {
+  background: var(--good);
+}
+
+/* ---- botón + ---- */
+.fab {
+  position: absolute;
+  right: 28px;
+  bottom: 28px;
+  z-index: 30;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 18px rgba(47, 95, 184, 0.35);
+  transition: transform 0.12s, background 0.12s;
+}
+.fab:hover {
+  background: var(--accent-strong);
+}
+.fab:active {
+  transform: scale(0.94);
+}
+
+/* ---- hoja inferior ---- */
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: rgba(15, 20, 30, 0.35);
+}
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: 0 auto;
+  max-width: 600px;
+  background: var(--surface);
+  border-radius: 18px 18px 0 0;
+  padding: 8px 16px calc(14px + env(safe-area-inset-bottom));
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.15);
+  animation: sheet-up 0.18s ease-out;
+}
+.sheet-grip {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-strong);
+  margin: 0 auto 12px;
+}
+@keyframes sheet-up {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+@media (min-width: 769px) {
+  .sheet {
+    bottom: 24px;
+    border-radius: 18px;
+    padding-bottom: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheet {
+    animation: none;
+  }
+}
+
+/* ---- formulario de crear (dentro de la hoja) ---- */
+.composer {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  margin: 0;
+}
+.composer:focus-within {
+  border: none;
+  box-shadow: none;
+}
+.composer-main {
+  border: 1.5px solid var(--accent);
+  border-radius: 12px;
+  padding: 4px 12px;
+  gap: 10px;
+}
+.composer-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #c4c4c4;
+  flex-shrink: 0;
+}
+.composer-input {
+  font-size: 16px;
+  padding: 10px 0;
+}
+.composer-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+.qchip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: #f2f1ef;
+  color: var(--text-soft);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.qchip.on {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: rgba(47, 95, 184, 0.35);
+}
+/* El selector nativo, invisible encima del chip: en el móvil abre el
+   desplegable o el calendario del sistema, que es lo más rápido. */
+.qchip-native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  font-size: 16px;
+}
+.composer-extra,
+.composer-tags {
+  margin-top: 10px;
+  padding: 0;
+}
+.composer-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 14px;
+}
+.composer-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.composer-foot .composer-error,
+.composer-foot .composer-queued {
+  margin: 0;
+  padding: 0;
+  font-size: 12.5px;
+}
+
+/* ---- móvil ---- */
+@media (max-width: 768px) {
+  .screen-head {
+    padding: 12px 12px 8px 60px;
+    padding-top: max(12px, env(safe-area-inset-top));
+  }
+  .screen-head h1 {
+    font-size: 21px;
+  }
+  .screen-scroll {
+    padding: 10px 0 calc(100px + env(safe-area-inset-bottom));
+  }
+  /* En el móvil la lista va de borde a borde, como las apps nativas. */
+  .task-list {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+  .group-label {
+    padding: 8px 16px 6px;
+  }
+  .task-row {
+    min-height: 50px;
+    padding: 0 16px;
+  }
+  .check {
+    width: 22px;
+    height: 22px;
+  }
+  .task-row:hover {
+    background: var(--surface);
+  }
+  .fab {
+    position: fixed;
+    right: 18px;
+    bottom: calc(18px + env(safe-area-inset-bottom));
+  }
+  .screen-empty {
+    padding: 50px 24px;
+  }
+}
+
+.composer-input:focus,
+.composer-input:focus-visible {
+  outline: none;
+  box-shadow: none;
+  border: none;
+}

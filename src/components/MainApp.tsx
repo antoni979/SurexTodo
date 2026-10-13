@@ -210,7 +210,11 @@ export default function MainApp({
         )}
       </main>
       <ConnectionStatus />
-      {!workspacesLoading && <QuickCapture workspaceId={workspaceId} />}
+      {/* Las listas tienen su propio + (crea la tarea donde estás). El global
+          solo hace falta en las pantallas sin lista. */}
+      {!workspacesLoading && (view.kind === "calendar" || view.kind === "projects") && (
+        <QuickCapture workspaceId={workspaceId} />
+      )}
     </div>
   );
 }

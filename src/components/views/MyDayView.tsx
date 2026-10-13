@@ -40,6 +40,7 @@ export default function MyDayView({
       today={today}
       onOpenProject={onOpenProject}
       showTeamChip={true}
+      myDayMark={false}
       loading={tasks === undefined}
       workspaceId={workspaceId}
       emptyText="Aquí aparecerán las tareas que planees para hoy. Añade una abajo o pulsa el sol en cualquier tarea."

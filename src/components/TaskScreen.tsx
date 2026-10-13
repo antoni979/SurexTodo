@@ -4,7 +4,19 @@ import { applyTaskSort, type EnrichedTask, type TaskSortMode } from "../util";
 import TaskRow from "./TaskRow";
 import TaskDetail from "./TaskDetail";
 import BulkActionBar from "./BulkActionBar";
-import { SearchIcon } from "./icons";
+import Sheet from "./Sheet";
+import { DotsIcon, PlusIcon, SearchIcon, SortIcon } from "./icons";
+
+const SORT_LABEL: Record<TaskSortMode, string> = {
+  default: "Por fecha",
+  date_asc: "Fecha ↑",
+  date_desc: "Fecha ↓",
+};
+const SORT_NEXT: Record<TaskSortMode, TaskSortMode> = {
+  default: "date_asc",
+  date_asc: "date_desc",
+  date_desc: "default",
+};
 
 type Member = { userId: Id<"users">; username: string };
 
@@ -25,6 +37,7 @@ export default function TaskScreen({
   onOpenProject,
   workspaceId,
   headerExtra,
+  myDayMark = true,
 }: {
   title: string;
   accent: string;
@@ -40,6 +53,8 @@ export default function TaskScreen({
   emptyText: string;
   onOpenProject?: (projectId: Id<"tasks">) => void;
   workspaceId?: Id<"workspaces"> | null;
+  /** Marcar con un sol las tareas que están en Mi día (no tiene sentido en la propia vista Mi día). */
+  myDayMark?: boolean;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -47,6 +62,9 @@ export default function TaskScreen({
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [sortMode, setSortMode] = useState<TaskSortMode>(
     () => (localStorage.getItem("taskSortMode") as TaskSortMode) || "default",
   );
@@ -133,28 +151,91 @@ export default function TaskScreen({
     if (win) { win.document.write(html); win.document.close(); win.print(); }
   }
 
+  function cycleSort() {
+    const next = SORT_NEXT[sortMode];
+    setSortMode(next);
+    localStorage.setItem("taskSortMode", next);
+  }
+
   return (
     <>
       <div className="screen">
         <header className="screen-head" style={{ color: accent }}>
-          <h1>{title}</h1>
-          {subtitle && (
-            isValidElement(subtitle)
-              ? <div className="screen-sub screen-sub-controls">{subtitle}</div>
-              : <p className="screen-sub">{subtitle}</p>
-          )}
-          <div className="screen-toolbar">
-            <div className="search-input">
+          <div className="head-row">
+            <div className="head-titles">
+              <h1>{title}</h1>
+              {subtitle &&
+                (isValidElement(subtitle) ? (
+                  <div className="screen-sub screen-sub-controls">{subtitle}</div>
+                ) : (
+                  <p className="screen-sub">{subtitle}</p>
+                ))}
+            </div>
+            <button
+              className={"icon-btn head-btn" + (searchOpen ? " on" : "")}
+              onClick={() => {
+                if (searchOpen) setSearch("");
+                setSearchOpen(!searchOpen);
+              }}
+              aria-label="Buscar"
+              title="Buscar"
+            >
+              <SearchIcon size={19} />
+            </button>
+            <div className="head-menu-wrap">
+              <button
+                className="icon-btn head-btn"
+                onClick={() => setMenuOpen(!menuOpen)}
+                aria-label="Más opciones"
+                title="Más opciones"
+              >
+                <DotsIcon size={19} />
+              </button>
+              {menuOpen && (
+                <>
+                  <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />
+                  <div className="head-menu" role="menu">
+                    <button
+                      role="menuitem"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        if (selectMode) exitSelectMode();
+                        else setSelectMode(true);
+                      }}
+                    >
+                      {selectMode ? "Cancelar selección" : "Seleccionar varias"}
+                    </button>
+                    <button
+                      role="menuitem"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        handlePrint();
+                      }}
+                    >
+                      Imprimir lista
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {searchOpen && (
+            <div className="search-input head-search">
               <SearchIcon size={15} />
               <input
                 type="search"
+                autoFocus
                 value={search}
-                placeholder="Buscar en estas tareas…"
+                placeholder="Buscar en estas tareas"
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
+          )}
+
+          <div className="filter-row">
             <button
-              className={"toggle-done-btn" + (showDone ? " active" : "")}
+              className={"filter-chip" + (showDone ? " active" : "")}
               onClick={() => {
                 const next = !showDone;
                 setShowDone(next);
@@ -162,60 +243,24 @@ export default function TaskScreen({
               }}
               title={showDone ? "Ocultar completadas" : "Mostrar completadas"}
             >
-              {showDone
-                ? `Ocultar completadas${doneCount > 0 ? ` (${doneCount})` : ""}`
-                : `Mostrar completadas${doneCount > 0 ? ` (${doneCount})` : ""}`}
+              Completadas{doneCount > 0 ? ` · ${doneCount}` : ""}
             </button>
-            <select
-              className="filter-select"
-              value={sortMode}
-              title="Ordenar por"
-              onChange={(e) => {
-                const next = e.target.value as TaskSortMode;
-                setSortMode(next);
-                localStorage.setItem("taskSortMode", next);
-              }}
-            >
-              <option value="default">Orden predeterminado (fecha)</option>
-              <option value="date_asc">Fecha ↑ (más próxima primero)</option>
-              <option value="date_desc">Fecha ↓ (más lejana primero)</option>
-            </select>
-            <button
-              className={"toggle-done-btn" + (selectMode ? " active" : "")}
-              onClick={() => selectMode ? exitSelectMode() : setSelectMode(true)}
-              title={selectMode ? "Cancelar selección" : "Seleccionar varias tareas"}
-            >
-              {selectMode ? "✕ Selección" : "☑ Seleccionar"}
+            <button className="filter-chip" onClick={cycleSort} title="Cambiar orden">
+              <SortIcon size={13} /> {SORT_LABEL[sortMode]}
             </button>
-            <button
-              className="toggle-done-btn"
-              onClick={handlePrint}
-              title="Imprimir lista actual"
-            >
-              🖨 Imprimir
-            </button>
-          </div>
-          {headerExtra && (
-            <div className="header-extra">{headerExtra}</div>
-          )}
-          {allTags.length > 0 && (
-            <div className="tag-filter">
+            {allTags.map((tag) => (
               <button
-                className={"filter-chip" + (activeTag === null ? " active" : "")}
-                onClick={() => setActiveTag(null)}
-              >Todas</button>
-              {allTags.map((tag) => (
-                <button
-                  key={tag}
-                  className={"filter-chip" + (activeTag === tag ? " active" : "")}
-                  onClick={() => setActiveTag(activeTag === tag ? null : tag)}
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
-          )}
-          {/* Select-all row */}
+                key={tag}
+                className={"filter-chip" + (activeTag === tag ? " active" : "")}
+                onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+              >
+                #{tag}
+              </button>
+            ))}
+          </div>
+
+          {headerExtra && <div className="header-extra">{headerExtra}</div>}
+
           {selectMode && allTasks.length > 0 && (
             <div className="select-all-row">
               <label>
@@ -234,7 +279,6 @@ export default function TaskScreen({
 
         <div className="screen-scroll">
           {beforeList}
-          {composer}
 
           {loading && <p className="screen-empty">Cargando…</p>}
 
@@ -254,41 +298,46 @@ export default function TaskScreen({
                       <span className="group-count">{group.tasks.length}</span>
                     </div>
                   )}
-                  {group.tasks.map((task) => (
-                    <TaskRow
-                      key={task._id}
-                      task={task}
-                      today={today}
-                      selected={!selectMode && task._id === selectedId}
-                      showTeam={showTeamChip}
-                      selectMode={selectMode}
-                      isSelected={selectedIds.has(task._id)}
-                      onToggleSelect={() => toggleSelect(task._id)}
-                      onSelect={() => {
-                        if (selectMode) {
-                          toggleSelect(task._id);
-                        } else if (task.isProject && onOpenProject) {
-                          onOpenProject(task._id);
-                        } else {
-                          setSelectedId(task._id);
-                        }
-                      }}
-                    />
-                  ))}
+                  <div className="task-list">
+                    {group.tasks.map((task) => (
+                      <TaskRow
+                        key={task._id}
+                        task={task}
+                        today={today}
+                        selected={!selectMode && task._id === selectedId}
+                        selectMode={selectMode}
+                        isSelected={selectedIds.has(task._id)}
+                        onToggleSelect={() => toggleSelect(task._id)}
+                        showMyDayMark={myDayMark}
+                        onSelect={() => {
+                          if (selectMode) {
+                            toggleSelect(task._id);
+                          } else if (task.isProject && onOpenProject) {
+                            onOpenProject(task._id);
+                          } else {
+                            setSelectedId(task._id);
+                          }
+                        }}
+                      />
+                    ))}
+                  </div>
                 </section>
               ),
             )}
         </div>
 
-        {/* Bulk action bar */}
         {selectMode && selectedIds.size > 0 && (
-          <BulkActionBar
-            selectedIds={selectedIds}
-            onClear={exitSelectMode}
-            workspaceId={workspaceId}
-          />
+          <BulkActionBar selectedIds={selectedIds} onClear={exitSelectMode} workspaceId={workspaceId} />
+        )}
+
+        {composer && !selectMode && (
+          <button className="fab" onClick={() => setAdding(true)} aria-label="Añadir tarea" title="Añadir tarea">
+            <PlusIcon size={24} />
+          </button>
         )}
       </div>
+
+      {adding && composer && <Sheet onClose={() => setAdding(false)}>{composer}</Sheet>}
 
       {!selectMode && selectedTask && (
         <TaskDetail

@@ -8,8 +8,12 @@ import {
   PRIORITY_META,
   type Priority,
   type Recurrence,
+  localToday,
+  tomorrow,
+  shortDate,
+  recurrenceLabel,
 } from "../util";
-import { PlusIcon } from "./icons";
+import { CalendarIcon, FlagIcon, ListIcon, RepeatIcon, UsersIcon } from "./icons";
 import RecurrencePicker from "./RecurrencePicker";
 
 export type ComposerData = {
@@ -59,6 +63,10 @@ export default function Composer({
   // Ref al input real: leemos el título del DOM al enviar, por si una extensión
   // del navegador modifica el campo sin disparar el onChange de React.
   const titleRef = useRef<HTMLInputElement>(null);
+  const [showRecurrence, setShowRecurrence] = useState(false);
+  const [showTags, setShowTags] = useState(false);
+  const today = localToday();
+  const tmr = tomorrow(today);
 
   const allTags =
     useCachedQuery(api.tasks.listAllTags, workspaceId ? { workspaceId } : {}) ?? [];
@@ -95,6 +103,9 @@ export default function Composer({
       setRecurrence(undefined);
       setTags([]);
       setTagInput("");
+      setShowRecurrence(false);
+      setShowTags(false);
+      titleRef.current?.focus();
     }
 
     // Sin conexión no tiene sentido esperar: la cola offline guarda la
@@ -156,134 +167,208 @@ export default function Composer({
       )
     : [];
 
+  // Los atajos no deben quitarle el foco al título: en el móvil eso cierra el
+  // teclado y habría que volver a tocar el campo para cada tarea.
+  const keepFocus = (e: React.MouseEvent) => e.preventDefault();
+  const strongPrio = priority === "urgente" || priority === "alta";
+  const customDate = dueDate && dueDate !== today && dueDate !== tmr;
+
   return (
     <form className="composer" onSubmit={submit}>
       <div className="composer-main">
-        <span className="composer-plus">
-          <PlusIcon size={18} />
-        </span>
+        <span
+          className="composer-dot"
+          style={strongPrio ? { borderColor: PRIORITY_META[priority].color } : undefined}
+        />
         <input
           ref={titleRef}
           className="composer-input"
           type="text"
+          autoFocus
+          enterKeyHint="done"
           // No controlado a propósito: si fuese value={title}, React revertiría
           // el texto que una extensión inyecte en el DOM. Leemos por ref.
           defaultValue=""
           onChange={(e) => setTitle(e.target.value)}
           placeholder={placeholder}
         />
-        <button type="submit" className="btn-primary btn-sm" disabled={busy}>
-          Agregar
+      </div>
+
+      {/* Atajos de un toque. Los desplegables nativos van superpuestos e
+          invisibles sobre cada chip: en el móvil abren el selector del sistema. */}
+      <div className="composer-quick">
+        <button
+          type="button"
+          onMouseDown={keepFocus}
+          className={"qchip" + (dueDate === today ? " on" : "")}
+          onClick={() => setDueDate(dueDate === today ? "" : today)}
+        >
+          Hoy
+        </button>
+        <button
+          type="button"
+          onMouseDown={keepFocus}
+          className={"qchip" + (dueDate === tmr ? " on" : "")}
+          onClick={() => setDueDate(dueDate === tmr ? "" : tmr)}
+        >
+          Mañana
+        </button>
+        <label className={"qchip" + (customDate ? " on" : "")}>
+          <CalendarIcon size={14} />
+          {customDate ? shortDate(dueDate) : "Fecha"}
+          <input
+            type="date"
+            className="qchip-native"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            onClick={(e) => e.currentTarget.showPicker?.()}
+            aria-label="Fecha de vencimiento"
+          />
+        </label>
+        <label className={"qchip" + (priority !== "media" ? " on" : "")}>
+          <FlagIcon size={14} />
+          {priority === "media" ? "Prioridad" : PRIORITY_META[priority].short}
+          <select
+            className="qchip-native"
+            value={priority}
+            onChange={(e) => setPriority(e.target.value as Priority)}
+            aria-label="Prioridad"
+          >
+            {PRIORITIES.map((p) => (
+              <option key={p} value={p}>
+                {PRIORITY_META[p].label}
+              </option>
+            ))}
+          </select>
+        </label>
+        {lists && lists.length > 0 && (
+          <label className={"qchip" + (listId ? " on" : "")}>
+            <ListIcon size={14} />
+            {listId ? lists?.find((l) => l._id === listId)?.name : "Lista"}
+            <select
+              className="qchip-native"
+              value={listId}
+              onChange={(e) => setListId(e.target.value)}
+              aria-label="Lista"
+            >
+              <option value="">Sin lista</option>
+              {lists.map((l) => (
+                <option key={l._id} value={l._id}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {members && (
+          <label className={"qchip" + (assigneeId ? " on" : "")}>
+            <UsersIcon size={14} />
+            {assigneeId ? members?.find((m) => m.userId === assigneeId)?.username : "Asignar"}
+            <select
+              className="qchip-native"
+              value={assigneeId}
+              onChange={(e) => setAssigneeId(e.target.value)}
+              aria-label="Asignar a"
+            >
+              <option value="">Sin asignar</option>
+              {members.map((m) => (
+                <option key={m.userId} value={m.userId}>
+                  {m.username}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        <button
+          type="button"
+          onMouseDown={keepFocus}
+          className={"qchip" + (recurrence ? " on" : "")}
+          onClick={() => setShowRecurrence((v) => !v)}
+          aria-label="Repetir"
+        >
+          <RepeatIcon size={14} />
+          {recurrence ? recurrenceLabel(recurrence) : ""}
+        </button>
+        <button
+          type="button"
+          onMouseDown={keepFocus}
+          className={"qchip" + (tags.length ? " on" : "")}
+          onClick={() => setShowTags((v) => !v)}
+          aria-label="Etiquetas"
+        >
+          #{tags.length ? " " + tags.length : ""}
         </button>
       </div>
-      <div className="composer-options">
-        <select
-          value={priority}
-          onChange={(e) => setPriority(e.target.value as Priority)}
-          title="Prioridad"
-        >
-          {PRIORITIES.map((p) => (
-            <option key={p} value={p}>
-              {PRIORITY_META[p].label}
-            </option>
-          ))}
-        </select>
-        <input
-          type="date"
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
-          title="Fecha de vencimiento"
-        />
-        {members && (
-          <select
-            value={assigneeId}
-            onChange={(e) => setAssigneeId(e.target.value)}
-            title="Asignar a"
-          >
-            <option value="">Sin asignar</option>
-            {members.map((m) => (
-              <option key={m.userId} value={m.userId}>
-                {m.username}
-              </option>
-            ))}
-          </select>
-        )}
-        {lists && lists.length > 0 && (
-          <select
-            value={listId}
-            onChange={(e) => setListId(e.target.value)}
-            title="Añadir a una lista"
-          >
-            <option value="">Sin lista</option>
-            {lists.map((l) => (
-              <option key={l._id} value={l._id}>
-                {l.name}
-              </option>
-            ))}
-          </select>
-        )}
-        <RecurrencePicker value={recurrence} onChange={setRecurrence} />
-      </div>
 
-      {/* Tags row */}
-      <div className="composer-tags">
-        {tags.map((tag) => (
-          <span key={tag} className="tag-chip">
-            {tag}
-            <button
-              type="button"
-              className="tag-chip-remove"
-              onClick={() => removeTag(tag)}
-            >
-              ×
-            </button>
-          </span>
-        ))}
-        <div className="tag-autocomplete" style={{ position: "relative" }}>
-          <input
-            type="text"
-            className="tag-input"
-            value={tagInput}
-            placeholder="🏷 etiqueta (opcional)"
-            autoComplete="off"
-            onChange={(e) => setTagInput(e.target.value)}
-            onFocus={() => setTagFocused(true)}
-            onBlur={() => setTimeout(() => setTagFocused(false), 150)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === ",") {
-                e.preventDefault();
-                addTag(tagInput);
-              } else if (e.key === "Backspace" && tagInput === "" && tags.length > 0) {
-                setTags(tags.slice(0, -1));
-              }
-            }}
-          />
-          {tagSuggestions.length > 0 && (
-            <div className="tag-suggestions">
-              {tagSuggestions.map((sug) => (
-                <button
-                  key={sug}
-                  type="button"
-                  className="tag-suggestion"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    addTag(sug);
-                  }}
-                >
-                  {sug}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {queued && !error && (
-        <div className="composer-queued">
-          Guardada. Se enviará sola en cuanto vuelva la conexión.
+      {showRecurrence && (
+        <div className="composer-extra">
+          <RecurrencePicker value={recurrence} onChange={setRecurrence} />
         </div>
       )}
-      {error && <div className="composer-error">{error}</div>}
+
+      {showTags && (
+        <div className="composer-tags">
+          {tags.map((tag) => (
+            <span key={tag} className="tag-chip">
+              {tag}
+              <button type="button" className="tag-chip-remove" onClick={() => removeTag(tag)}>
+                ×
+              </button>
+            </span>
+          ))}
+          <div className="tag-autocomplete" style={{ position: "relative" }}>
+            <input
+              type="text"
+              className="tag-input"
+              value={tagInput}
+              placeholder="Etiqueta y pulsa Intro"
+              autoComplete="off"
+              autoFocus
+              onChange={(e) => setTagInput(e.target.value)}
+              onFocus={() => setTagFocused(true)}
+              onBlur={() => setTimeout(() => setTagFocused(false), 150)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === ",") {
+                  e.preventDefault();
+                  addTag(tagInput);
+                } else if (e.key === "Backspace" && tagInput === "" && tags.length > 0) {
+                  setTags(tags.slice(0, -1));
+                }
+              }}
+            />
+            {tagSuggestions.length > 0 && (
+              <div className="tag-suggestions">
+                {tagSuggestions.map((sug) => (
+                  <button
+                    key={sug}
+                    type="button"
+                    className="tag-suggestion"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      addTag(sug);
+                    }}
+                  >
+                    {sug}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="composer-foot">
+        {error ? (
+          <span className="composer-error">{error}</span>
+        ) : queued ? (
+          <span className="composer-queued">Guardada. Se enviará al recuperar la conexión.</span>
+        ) : (
+          <span className="composer-hint">Intro añade y sigue con la siguiente</span>
+        )}
+        <button type="submit" className="btn-primary btn-sm" disabled={busy}>
+          Añadir
+        </button>
+      </div>
     </form>
   );
 }
