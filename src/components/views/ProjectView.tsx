@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
-import type { Id } from "../../../convex/_generated/dataModel";
+import { useMutation, useQuery } from "../../data/react";
+import { api } from "../../data/api";
+import type { Id } from "../../data/types";
 import {
   type KanbanStatus,
   type ProjectDetail,
@@ -751,7 +751,7 @@ function KanbanCard({
       <div className="kanban-card-row">
         <button
           className={"check" + (task.completed ? " checked" : "")}
-          onClick={() => void toggle({ taskId: task._id, today })}
+          onClick={() => void toggle({ taskId: task._id, today, completed: !task.completed })}
         >
           {task.completed && <CheckIcon size={11} />}
         </button>
@@ -802,6 +802,7 @@ function KanbanCard({
                       void toggle({
                         taskId: s._id as Id<"tasks">,
                         today,
+                        completed: !s.completed,
                       })
                     }
                   />
@@ -938,7 +939,7 @@ function TaskListPanel({
           >
             <button
               className={"check" + (t.completed ? " checked" : "")}
-              onClick={(e) => { e.stopPropagation(); void toggle({ taskId: t._id, today }); }}
+              onClick={(e) => { e.stopPropagation(); void toggle({ taskId: t._id, today, completed: !t.completed }); }}
             >
               {t.completed && <CheckIcon size={13} />}
             </button>

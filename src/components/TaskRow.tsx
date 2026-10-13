@@ -1,5 +1,5 @@
-import { useMutation } from "convex/react";
-import { api } from "../../convex/_generated/api";
+import { useMutation } from "../data/react";
+import { api } from "../data/api";
 import {
   type EnrichedTask,
   type Priority,
@@ -59,7 +59,7 @@ export default function TaskRow({
           title={task.completed ? "Marcar como pendiente" : "Completar"}
           onClick={(e) => {
             e.stopPropagation();
-            void toggleComplete({ taskId: task._id, today });
+            void toggleComplete({ taskId: task._id, today, completed: !task.completed });
           }}
         >
           {task.completed && <CheckIcon size={13} />}

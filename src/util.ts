@@ -1,23 +1,14 @@
-import type { FunctionReturnType } from "convex/server";
-import { api } from "../convex/_generated/api";
+import type { EnrichedTask } from "./data/types";
 
-export type EnrichedTask = FunctionReturnType<
-  typeof api.tasks.listPersonal
->[number];
+export type {
+  EnrichedTask,
+  ProjectSummary,
+  ProjectDetail,
+  ProjectTask,
+} from "./data/types";
 
-export type ProjectSummary = FunctionReturnType<
-  typeof api.projects.listMyProjects
->[number];
-
-export type ProjectDetail = NonNullable<
-  FunctionReturnType<typeof api.projects.getProject>
->;
-
-export type ProjectTask = ProjectDetail["tasks"][number];
-
-// Colores de lista (copia segura para el navegador; el backend tiene la suya
-// en convex/lists.ts). No importar convex/lists.ts desde el frontend: arrastra
-// código de servidor al bundle y Convex lo rechaza.
+// Colores de lista. El color por defecto también está en la función SQL
+// todo.list_my_lists, por si alguna lista no tiene color guardado.
 export const LIST_COLORS = [
   "#ef4444", // rojo
   "#f97316", // naranja

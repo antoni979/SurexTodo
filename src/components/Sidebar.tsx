@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { useMutation } from "convex/react";
+import { useMutation } from "../data/react";
 import { useCachedQuery } from "../hooks/useCachedQuery";
 import { forgetUser } from "../lib/queryCache";
-import { useAuthActions } from "@convex-dev/auth/react";
-import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
+import { useAuthActions } from "../data/react";
+import { api } from "../data/api";
+import type { Id } from "../data/types";
 import type { View } from "./MainApp";
 import {
   SunIcon,
@@ -16,7 +16,6 @@ import {
   FolderIcon,
   BellIcon,
   SettingsIcon,
-  BrainIcon,
 } from "./icons";
 import SettingsModal from "./SettingsModal";
 import { PROJECT_STATUS_META, LIST_COLORS, DEFAULT_COLOR } from "../util";
@@ -137,13 +136,6 @@ export default function Sidebar({
         >
           <CalendarIcon size={18} />
           <span>Calendario</span>
-        </button>
-        <button
-          className={navClass(view.kind === "brain")}
-          onClick={() => onSelect({ kind: "brain" })}
-        >
-          <BrainIcon size={18} />
-          <span>Segundo Cerebro</span>
         </button>
       </nav>
 

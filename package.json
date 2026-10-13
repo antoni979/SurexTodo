@@ -12,6 +12,7 @@
   "dependencies": {
     "@auth/core": "0.37.0",
     "@convex-dev/auth": "^0.0.87",
+    "@supabase/supabase-js": "^2.117.3",
     "convex": "^1.23.0",
     "d3-drag": "^3.0.0",
     "d3-force": "^3.0.0",

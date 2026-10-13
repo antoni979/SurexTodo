@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useCachedQuery } from "../../hooks/useCachedQuery";
-import { api } from "../../../convex/_generated/api";
-import type { Id } from "../../../convex/_generated/dataModel";
+import { api } from "../../data/api";
+import type { Id } from "../../data/types";
 import { type EnrichedTask, type Priority, PRIORITY_META, dayDiff } from "../../util";
 import TaskRow from "../TaskRow";
 import TaskDetail from "../TaskDetail";

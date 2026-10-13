@@ -1,5 +1,5 @@
 import { useState, type ReactNode, isValidElement } from "react";
-import type { Id } from "../../convex/_generated/dataModel";
+import type { Id } from "../data/types";
 import { applyTaskSort, type EnrichedTask, type TaskSortMode } from "../util";
 import TaskRow from "./TaskRow";
 import TaskDetail from "./TaskDetail";

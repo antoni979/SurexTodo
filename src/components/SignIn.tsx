@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { useAuthActions } from "@convex-dev/auth/react";
+import { useAuthActions } from "../data/react";
 
+// Se entra con la misma cuenta que en la Intranet (nº SAP + contraseña). No
+// hay registro: las cuentas las da de alta RRHH en la Intranet, y el acceso
+// al todo se concede aparte.
 export default function SignIn() {
   const { signIn } = useAuthActions();
-  const [flow, setFlow] = useState<"signIn" | "signUp">("signIn");
-  const [email, setEmail] = useState("");
+  const [sapId, setSapId] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -14,13 +16,9 @@ export default function SignIn() {
     setError(null);
     setLoading(true);
     try {
-      await signIn("password", { email, password, flow });
-    } catch {
-      setError(
-        flow === "signIn"
-          ? "Email o contraseña incorrectos."
-          : "No se pudo crear la cuenta. Revisa el email o usa una contraseña más larga (mín. 6 caracteres).",
-      );
+      await signIn(sapId, password);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Usuario o contraseña incorrectos");
       setLoading(false);
     }
   }
@@ -32,22 +30,19 @@ export default function SignIn() {
           <img src="/icon.svg" alt="" width={48} height={48} />
           <h1>SurexTodo</h1>
         </div>
-        <p className="auth-sub">
-          {flow === "signIn"
-            ? "Inicia sesión para ver tus tareas"
-            : "Crea una cuenta para empezar"}
-        </p>
+        <p className="auth-sub">Entra con tu usuario de la Intranet</p>
 
         <form onSubmit={handleSubmit} className="auth-form">
           <label>
-            Email
+            Nº de usuario (SAP)
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="tucorreo@ejemplo.com"
+              type="text"
+              inputMode="numeric"
+              value={sapId}
+              onChange={(e) => setSapId(e.target.value)}
+              placeholder="Tu número de personal"
               required
-              autoComplete="email"
+              autoComplete="username"
             />
           </label>
           <label>
@@ -56,38 +51,18 @@ export default function SignIn() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Mínimo 6 caracteres"
+              placeholder="La misma de la Intranet"
               required
-              minLength={6}
-              autoComplete={
-                flow === "signIn" ? "current-password" : "new-password"
-              }
+              autoComplete="current-password"
             />
           </label>
 
           {error && <div className="auth-error">{error}</div>}
 
           <button type="submit" className="btn-primary" disabled={loading}>
-            {loading
-              ? "Un momento…"
-              : flow === "signIn"
-                ? "Iniciar sesión"
-                : "Crear cuenta"}
+            {loading ? "Un momento…" : "Entrar"}
           </button>
         </form>
-
-        <button
-          type="button"
-          className="auth-switch"
-          onClick={() => {
-            setError(null);
-            setFlow(flow === "signIn" ? "signUp" : "signIn");
-          }}
-        >
-          {flow === "signIn"
-            ? "¿No tienes cuenta? Regístrate"
-            : "¿Ya tienes cuenta? Inicia sesión"}
-        </button>
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
+import { useMutation, useQuery } from "../data/react";
+import { api } from "../data/api";
+import type { Id } from "../data/types";
 import { PRIORITIES, PRIORITY_META, type Priority } from "../util";
 import { TrashIcon } from "./icons";
 

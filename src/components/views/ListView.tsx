@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useMutation } from "convex/react";
+import { useMutation } from "../../data/react";
 import { useCachedQuery } from "../../hooks/useCachedQuery";
-import { api } from "../../../convex/_generated/api";
-import type { Id } from "../../../convex/_generated/dataModel";
+import { api } from "../../data/api";
+import type { Id } from "../../data/types";
 import { LIST_COLORS, DEFAULT_COLOR } from "../../util";
 import Composer from "../Composer";
 import TaskScreen, { type TaskGroup } from "../TaskScreen";

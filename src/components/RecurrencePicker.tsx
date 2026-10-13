@@ -27,7 +27,7 @@ export default function RecurrencePicker({
   onChange: (r: Recurrence | undefined) => void;
 }) {
   const current = value?.type ?? "none";
-  // Local interval so the number input responds instantly without waiting for Convex
+  // Local interval so the number input responds instantly without waiting for the server
   const [localInterval, setLocalInterval] = useState<number>(value?.interval ?? 1);
 
   // Sync local interval if parent value changes (e.g. initial load)
@@ -95,7 +95,7 @@ export default function RecurrencePicker({
               if (!isNaN(n)) setLocalInterval(n);
               else setLocalInterval(0); // allow clearing to retype
             }}
-            // Commit to Convex only when user leaves the field or presses Enter
+            // Commit to the server only when user leaves the field or presses Enter
             onBlur={(e) => commitInterval(parseInt(e.target.value, 10))}
             onKeyDown={(e) => {
               if (e.key === "Enter") commitInterval(localInterval);

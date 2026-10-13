@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useMutation } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
+import { useMutation } from "../data/react";
+import { api } from "../data/api";
+import type { Id } from "../data/types";
 import { CloseIcon } from "./icons";
 
 export default function NewTeamModal({

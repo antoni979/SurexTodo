@@ -1,7 +1,7 @@
-import { useRef, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
+import { useEffect, useRef, useState } from "react";
+import { attachmentUrl, uploadAttachment, useMutation, useQuery } from "../data/react";
+import { api } from "../data/api";
+import type { Id } from "../data/types";
 import { DownloadIcon, PaperclipIcon, TrashIcon } from "./icons";
 
 function humanSize(bytes: number) {
@@ -18,9 +18,25 @@ export default function AttachmentsPanel({
   taskId: Id<"tasks">;
 }) {
   const items = useQuery(api.attachments.listAttachments, { taskId });
-  const generateUploadUrl = useMutation(api.attachments.generateUploadUrl);
-  const addAttachment = useMutation(api.attachments.addAttachment);
   const deleteAttachment = useMutation(api.attachments.deleteAttachment);
+
+  // El bucket es privado: cada adjunto se abre con una URL firmada (1 h). Se
+  // resuelven al cargar la lista y no al hacer clic, porque abrir una pestaña
+  // después de un await hace que el navegador la bloquee.
+  const [urls, setUrls] = useState<Record<string, string>>({});
+  useEffect(() => {
+    let alive = true;
+    for (const a of items ?? []) {
+      if (urls[a.storagePath]) continue;
+      attachmentUrl(a.storagePath)
+        .then((u) => alive && setUrls((m) => ({ ...m, [a.storagePath]: u })))
+        .catch(() => {});
+    }
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items]);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -36,23 +52,7 @@ export default function AttachmentsPanel({
       for (let i = 0; i < list.length; i++) {
         const file = list[i];
         setProgress(`Subiendo ${i + 1}/${list.length}: ${file.name}`);
-        const url = await generateUploadUrl();
-        const result = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": file.type || "application/octet-stream" },
-          body: file,
-        });
-        if (!result.ok) throw new Error("Fallo al subir el archivo");
-        const { storageId } = (await result.json()) as {
-          storageId: Id<"_storage">;
-        };
-        await addAttachment({
-          taskId,
-          storageId,
-          name: file.name,
-          size: file.size,
-          mimeType: file.type || "application/octet-stream",
-        });
+        await uploadAttachment(taskId, file);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error al subir");
@@ -74,12 +74,14 @@ export default function AttachmentsPanel({
         )}
       </div>
       <div className="attachments-list">
-        {list.map((a) => (
+        {list.map((a) => {
+          const url = urls[a.storagePath];
+          return (
           <div key={a._id} className="attachment-row">
             <PaperclipIcon size={14} />
             <div className="attachment-info">
               <a
-                href={a.url ?? "#"}
+                href={url ?? "#"}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="attachment-name"
@@ -89,9 +91,9 @@ export default function AttachmentsPanel({
               </a>
               <span className="attachment-size">{humanSize(a.size)}</span>
             </div>
-            {a.url && (
+            {url && (
               <a
-                href={a.url}
+                href={url}
                 download={a.name}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -112,7 +114,8 @@ export default function AttachmentsPanel({
               <TrashIcon size={13} />
             </button>
           </div>
-        ))}
+          );
+        })}
       </div>
       <label
         className={"attachment-drop" + (uploading ? " busy" : "")}
