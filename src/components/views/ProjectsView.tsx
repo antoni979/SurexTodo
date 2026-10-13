@@ -1,6 +1,6 @@
 import { useCachedQuery } from "../../hooks/useCachedQuery";
-import { api } from "../../../convex/_generated/api";
-import type { Id } from "../../../convex/_generated/dataModel";
+import { api } from "../../data/api";
+import type { Id } from "../../data/types";
 import {
   PROJECT_STATUS_META,
   type ProjectStatus,

@@ -5,7 +5,7 @@
  * red EN SERIE (refresco de token → profiles.me → workspaces → tareas), cada
  * una con su pantalla de "Cargando…". En móvil con la radio dormida eso son
  * varios segundos mirando el logo antes de poder escribir nada. Con esta
- * caché la app pinta el último estado conocido al instante y Convex va
+ * caché la app pinta el último estado conocido al instante y el servidor va
  * refrescando por detrás.
  *
  * AISLAMIENTO ENTRE USUARIOS (importante):
@@ -19,7 +19,10 @@
  * justo el parpadeo de pantalla vacía que queremos evitar.
  */
 
-const PREFIX = "sxt:qc:v1:";
+// v2 = datos de Supabase. Lo guardado con Convex (v1) tiene otros ids y no
+// se debe leer nunca: se borra al limpiar.
+const PREFIX = "sxt:qc:v2:";
+const OLD_PREFIXES = ["sxt:qc:v1:"];
 const OWNER_KEY = "sxt:qc:owner";
 
 /** Por encima de esto no cacheamos la entrada: no merece la pena y arriesga la cuota. */
@@ -54,7 +57,7 @@ export function clearQueryCache() {
     const doomed: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (k && k.startsWith(PREFIX)) doomed.push(k);
+      if (k && (k.startsWith(PREFIX) || OLD_PREFIXES.some((p) => k.startsWith(p)))) doomed.push(k);
     }
     for (const k of doomed) localStorage.removeItem(k);
     localStorage.removeItem(OWNER_KEY);
@@ -121,7 +124,7 @@ export function forgetUser() {
 }
 
 /** JSON con claves ordenadas, para que los mismos args den siempre la misma clave. */
-function stableStringify(value: unknown): string {
+export function stableStringify(value: unknown): string {
   if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "null";
   if (Array.isArray(value)) return "[" + value.map(stableStringify).join(",") + "]";
   const entries = Object.entries(value as Record<string, unknown>)

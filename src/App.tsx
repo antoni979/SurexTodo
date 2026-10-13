@@ -1,7 +1,7 @@
 import { useEffect } from "react";
-import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
-import { api } from "../convex/_generated/api";
-import type { Id } from "../convex/_generated/dataModel";
+import { Authenticated, Unauthenticated, AuthLoading } from "./data/react";
+import { api } from "./data/api";
+import type { Id } from "./data/types";
 import { useCachedQuery } from "./hooks/useCachedQuery";
 import {
   forgetUser,
@@ -10,7 +10,7 @@ import {
   writeLastUser,
 } from "./lib/queryCache";
 import SignIn from "./components/SignIn";
-import UsernameSetup from "./components/UsernameSetup";
+import NoAccess from "./components/UsernameSetup";
 import MainApp from "./components/MainApp";
 
 function Splash({ text }: { text: string }) {
@@ -76,7 +76,8 @@ function Gate() {
     );
   }
 
-  if (!profile || !profile.username) return <UsernameSetup />;
+  // Cuenta de la Intranet sin alta en el todo (o archivada).
+  if (!profile || profile.noAccess || !profile.username) return <NoAccess />;
 
   // La key fuerza remontaje si resulta ser otro usuario del que teníamos
   // cacheado, para que las vistas vuelvan a leer la caché ya limpia.

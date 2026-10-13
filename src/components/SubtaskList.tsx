@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
+import { useQuery, useMutation } from "../data/react";
+import { api } from "../data/api";
+import type { Id } from "../data/types";
 import { CalendarIcon, CheckIcon, PlusIcon, TrashIcon } from "./icons";
 import { formatDue } from "../util";
 
@@ -122,7 +122,7 @@ export default function SubtaskList({
           >
             <button
               className={"check" + (s.completed ? " checked" : "")}
-              onClick={() => void toggle({ taskId: s._id, today })}
+              onClick={() => void toggle({ taskId: s._id, today, completed: !s.completed })}
               title={s.completed ? "Marcar pendiente" : "Completar"}
             >
               {s.completed && <CheckIcon size={11} />}

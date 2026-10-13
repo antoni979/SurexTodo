@@ -1,7 +1,7 @@
-import { useMutation } from "convex/react";
+import { useMutation } from "../../data/react";
 import { useCachedQuery } from "../../hooks/useCachedQuery";
-import { api } from "../../../convex/_generated/api";
-import type { Id } from "../../../convex/_generated/dataModel";
+import { api } from "../../data/api";
+import type { Id } from "../../data/types";
 import { longToday } from "../../util";
 import Composer from "../Composer";
 import TaskScreen, { type TaskGroup } from "../TaskScreen";

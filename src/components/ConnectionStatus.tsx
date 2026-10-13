@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useConvexConnectionState } from "convex/react";
+import { useConvexConnectionState } from "../data/react";
 
 /** Aguantamos un poco antes de avisar: las reconexiones normales duran menos
  *  que esto y no queremos un cartel parpadeando cada dos por tres. */
@@ -7,8 +7,9 @@ const OFFLINE_GRACE_MS = 2500;
 
 /**
  * Avisa de que se trabaja sin conexión y de cuántos cambios están esperando
- * a enviarse. El cliente de Convex reenvía solo las mutaciones pendientes al
- * reconectar; esto es únicamente para que se vea y puedas fiarte.
+ * a enviarse. La cola offline (src/data/react.ts) los guarda en disco y los
+ * reenvía sola al reconectar; esto es únicamente para que se vea y puedas
+ * fiarte.
  */
 export default function ConnectionStatus() {
   const { isWebSocketConnected, inflightMutations } = useConvexConnectionState();
@@ -22,17 +23,6 @@ export default function ConnectionStatus() {
     const t = setTimeout(() => setOfflineConfirmed(true), OFFLINE_GRACE_MS);
     return () => clearTimeout(t);
   }, [isWebSocketConnected]);
-
-  // La cola de Convex vive en memoria: si se cierra la app con cambios sin
-  // enviar, se pierden. Avisamos antes de cerrar. Ojo: en móvil el navegador
-  // suele ignorar este aviso al matar la pestaña, así que es una red de
-  // seguridad parcial (sirve sobre todo en escritorio), no una garantía.
-  useEffect(() => {
-    if (inflightMutations === 0) return;
-    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [inflightMutations]);
 
   if (!offlineConfirmed) return null;
 

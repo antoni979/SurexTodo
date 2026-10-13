@@ -1,24 +1,12 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { ConvexReactClient } from "convex/react";
-import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import App from "./App";
 import "./index.css";
 
-const convexUrl = import.meta.env.VITE_CONVEX_URL as string;
-
-if (!convexUrl) {
-  throw new Error(
-    "Falta VITE_CONVEX_URL. Ejecuta `npx convex dev` y revisa el archivo .env.local",
-  );
-}
-
-const convex = new ConvexReactClient(convexUrl);
-
+// El cliente de Supabase y la sesión se inicializan en src/data/ al
+// importarse; no hace falta ningún provider envolviendo la app.
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <ConvexAuthProvider client={convex}>
-      <App />
-    </ConvexAuthProvider>
+    <App />
   </React.StrictMode>,
 );

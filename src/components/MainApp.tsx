@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
+import { api } from "../data/api";
+import type { Id } from "../data/types";
 import { localToday } from "../util";
 import { useTaskNotifications } from "../hooks/useTaskNotifications";
 import { useCachedQuery } from "../hooks/useCachedQuery";
@@ -13,7 +13,6 @@ import ProjectsView from "./views/ProjectsView";
 import ProjectView from "./views/ProjectView";
 import ListView from "./views/ListView";
 import CalendarView from "./views/CalendarView";
-import BrainView from "./views/BrainView";
 import QuickCapture from "./QuickCapture";
 import ConnectionStatus from "./ConnectionStatus";
 import { MenuIcon } from "./icons";
@@ -26,8 +25,7 @@ export type View =
   | { kind: "team"; teamId: Id<"teams"> }
   | { kind: "projects" }
   | { kind: "project"; projectId: Id<"tasks"> }
-  | { kind: "list"; listId: Id<"lists"> }
-  | { kind: "brain" };
+  | { kind: "list"; listId: Id<"lists"> };
 
 /** Esqueleto con la forma de una lista de tareas, para no enseñar un hueco vacío. */
 function TaskListSkeleton() {
@@ -208,7 +206,6 @@ export default function MainApp({
             workspaceId={workspaceId}
           />
         )}
-        {view.kind === "brain" && <BrainView />}
         </>
         )}
       </main>

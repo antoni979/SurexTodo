@@ -1,8 +1,8 @@
 import { useRef, useState } from "react";
-import { useConvexConnectionState } from "convex/react";
+import { useConvexConnectionState } from "../data/react";
 import { useCachedQuery } from "../hooks/useCachedQuery";
-import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
+import { api } from "../data/api";
+import type { Id } from "../data/types";
 import {
   PRIORITIES,
   PRIORITY_META,
@@ -97,8 +97,8 @@ export default function Composer({
       setTagInput("");
     }
 
-    // Sin conexión no tiene sentido esperar: el cliente de Convex guarda la
-    // mutación y la reenvía él solo al reconectar. Antes esperábamos 8s y
+    // Sin conexión no tiene sentido esperar: la cola offline guarda la
+    // tarea en disco y la reenvía sola al reconectar. Antes esperábamos 8s y
     // luego decíamos "sin respuesta del servidor", así que parecía que la
     // tarea se había perdido cuando en realidad estaba en cola.
     if (!isWebSocketConnected) {

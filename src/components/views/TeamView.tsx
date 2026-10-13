@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useMutation } from "convex/react";
+import { useMutation } from "../../data/react";
 import { useCachedQuery } from "../../hooks/useCachedQuery";
-import { api } from "../../../convex/_generated/api";
-import type { Id } from "../../../convex/_generated/dataModel";
+import { api } from "../../data/api";
+import type { Id } from "../../data/types";
 import Composer from "../Composer";
 import TaskScreen, { type TaskGroup } from "../TaskScreen";
 import TaskDetail from "../TaskDetail";
@@ -112,7 +112,7 @@ export default function TeamView({
   const createTask = useMutation(api.tasks.createTask);
   const lists = useCachedQuery(
     api.lists.listMyLists,
-    team ? { workspaceId: team.workspaceId } : "skip",
+    team ? { workspaceId: team.workspaceId ?? undefined } : "skip",
   ) ?? [];
   const [filter, setFilter] = useState<"all" | "mine" | "unassigned" | string>(
     "all",

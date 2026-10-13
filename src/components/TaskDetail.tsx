@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
+import { useMutation, useQuery } from "../data/react";
+import { api } from "../data/api";
+import type { Id } from "../data/types";
 import {
   type EnrichedTask,
   type Priority,
@@ -85,7 +85,7 @@ export default function TaskDetail({
       <div className="detail-head">
         <button
           className={"check" + (task.completed ? " checked" : "")}
-          onClick={() => void toggleComplete({ taskId: task._id, today })}
+          onClick={() => void toggleComplete({ taskId: task._id, today, completed: !task.completed })}
         >
           {task.completed && <CheckIcon size={13} />}
         </button>

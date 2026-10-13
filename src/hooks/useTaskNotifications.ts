@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
+import { useQuery } from "../data/react";
+import { api } from "../data/api";
+import type { Id } from "../data/types";
 import { dayDiff } from "../util";
 
 const STORAGE_KEY = "lastNotifiedDate";
