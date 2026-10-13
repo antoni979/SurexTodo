@@ -548,6 +548,7 @@ export const createTask = mutation({
 
     let teamId = args.teamId;
     let assigneeId = args.assigneeId;
+    let parentWorkspaceId: Id<"workspaces"> | undefined;
 
     // If creating as a child, inherit the parent's team and validate access.
     if (args.parentTaskId) {
@@ -555,6 +556,17 @@ export const createTask = mutation({
       if (!parent) throw new Error("Tarea padre no encontrada");
       await assertAccess(ctx, parent, userId);
       teamId = parent.teamId;
+      parentWorkspaceId = parent.workspaceId;
+    }
+
+    // El entorno SIEMPRE se hereda del padre o del equipo. Antes las tareas
+    // de equipo se guardaban sin workspaceId (el composer del equipo no lo
+    // manda) y quedaban fuera de Mi día/Planeado y de cualquier limpieza
+    // por entorno.
+    let workspaceId = parentWorkspaceId ?? args.workspaceId;
+    if (teamId) {
+      const team = await ctx.db.get(teamId);
+      if (team?.workspaceId) workspaceId = team.workspaceId;
     }
 
     if (teamId) {
@@ -583,7 +595,7 @@ export const createTask = mutation({
       recurrence: args.recurrence,
       parentTaskId: args.parentTaskId,
       kanbanStatus: args.parentTaskId ? "todo" : undefined,
-      workspaceId: args.workspaceId,
+      workspaceId,
       tags: cleanTags.length > 0 ? cleanTags : undefined,
       listId: args.listId,
     });
@@ -622,6 +634,7 @@ export const createSubtask = mutation({
       creatorId: userId,
       teamId: parent.teamId,
       parentTaskId: parentId,
+      workspaceId: parent.workspaceId,
     });
   },
 });

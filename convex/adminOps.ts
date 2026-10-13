@@ -1,5 +1,6 @@
 import { mutation, query, action, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 import { createAccount, modifyAccountCredentials } from "@convex-dev/auth/server";
 import { internal } from "./_generated/api";
 import { insertBrainNoteWithDedup, recomputeLinks } from "./brain";
@@ -582,5 +583,196 @@ export const backfillBrainFoldersForUser = mutation({
       updated++;
     }
     return { ownerUsername: profile.username, updated, notFound };
+  },
+});
+
+// Borra un entorno ENTERO y todo lo que cuelga de él: tareas (del entorno o
+// de sus equipos, que antes se guardaban sin workspaceId), subtareas a
+// cualquier profundidad, Mi día, adjuntos con su fichero, hitos/enlaces/
+// miembros de proyecto, equipos con sus miembros, listas, etiquetas y la
+// membresía. Nombre EXACTO; por defecto solo simula (dryRun). Si alguna
+// tarea alcanzada pertenece a OTRO entorno, aborta sin tocar nada.
+// No borra cuentas de usuario: eso es una decisión aparte. CLI-only.
+export const purgeWorkspace = mutation({
+  args: {
+    name: v.string(),
+    dryRun: v.optional(v.boolean()),
+    // Subtareas de una tarea del entorno que, por error, llevan otro
+    // workspaceId. Solo se borran si se pide explícitamente; las RAÍCES de
+    // otro entorno no se tocan nunca.
+    incluirDescendientesDeOtroEntorno: v.optional(v.boolean()),
+  },
+  handler: async (ctx, { name, dryRun = true, incluirDescendientesDeOtroEntorno = false }) => {
+    const all = await ctx.db.query("workspaces").collect();
+    const matches = all.filter((w) => w.name === name);
+    if (matches.length !== 1) {
+      throw new Error(`"${name}": ${matches.length} entornos con ese nombre exacto. Abortado.`);
+    }
+    const ws = matches[0];
+    if (all.length < 2) throw new Error("Es el único entorno que hay. Abortado.");
+
+    const teams = (await ctx.db.query("teams").collect()).filter((t) => t.workspaceId === ws._id);
+    const teamIds = new Set(teams.map((t) => t._id));
+    const allTasks = await ctx.db.query("tasks").collect();
+
+    // Raíces: del entorno, o de uno de sus equipos aunque no lleven entorno.
+    const doomed = new Map(
+      allTasks
+        .filter((t) => t.workspaceId === ws._id || (t.teamId && teamIds.has(t.teamId)))
+        .map((t) => [t._id, t]),
+    );
+    // Descendientes a cualquier profundidad.
+    let frontier = [...doomed.keys()];
+    while (frontier.length) {
+      const next: typeof frontier = [];
+      for (const id of frontier) {
+        const kids = await ctx.db.query("tasks").withIndex("by_parent", (q) => q.eq("parentTaskId", id)).collect();
+        for (const k of kids) if (!doomed.has(k._id)) { doomed.set(k._id, k); next.push(k._id); }
+      }
+      frontier = next;
+    }
+
+    const ajenas = [...doomed.values()].filter((t) => t.workspaceId && t.workspaceId !== ws._id);
+    const ajenasRaiz = ajenas.filter((t) => !t.parentTaskId);
+    if (ajenasRaiz.length) {
+      throw new Error(`${ajenasRaiz.length} tareas RAÍZ de otro entorno alcanzadas. Abortado sin tocar nada.`);
+    }
+    if (ajenas.length && !incluirDescendientesDeOtroEntorno) {
+      throw new Error(`${ajenas.length} tareas alcanzadas son de otro entorno. Abortado sin tocar nada.`);
+    }
+
+    const lists = (await ctx.db.query("lists").collect()).filter((l) => l.workspaceId === ws._id);
+    const listIds = new Set(lists.map((l) => l._id));
+    // Tareas de OTROS entornos que apunten a una lista que va a desaparecer.
+    const listRefsFuera = allTasks.filter((t) => t.listId && listIds.has(t.listId) && !doomed.has(t._id));
+    const tags = (await ctx.db.query("userTags").collect()).filter((t) => t.workspaceId === ws._id);
+    const members = await ctx.db.query("workspaceMembers").withIndex("by_workspace", (q) => q.eq("workspaceId", ws._id)).collect();
+
+    const c = { tareas: doomed.size, miDia: 0, adjuntos: 0, hitos: 0, enlaces: 0, miembrosProyecto: 0, miembrosEquipo: 0 };
+    const ops: Array<() => Promise<unknown>> = [];
+
+    for (const t of doomed.values()) {
+      for (const m of await ctx.db.query("myDay").withIndex("by_task", (q) => q.eq("taskId", t._id)).collect()) { c.miDia++; ops.push(() => ctx.db.delete(m._id)); }
+      for (const a of await ctx.db.query("attachments").withIndex("by_task", (q) => q.eq("taskId", t._id)).collect()) {
+        c.adjuntos++; ops.push(() => ctx.storage.delete(a.storageId)); ops.push(() => ctx.db.delete(a._id));
+      }
+      for (const m of await ctx.db.query("milestones").withIndex("by_project", (q) => q.eq("projectId", t._id)).collect()) { c.hitos++; ops.push(() => ctx.db.delete(m._id)); }
+      for (const l of await ctx.db.query("projectLinks").withIndex("by_project", (q) => q.eq("projectId", t._id)).collect()) { c.enlaces++; ops.push(() => ctx.db.delete(l._id)); }
+      for (const m of await ctx.db.query("projectMembers").withIndex("by_project", (q) => q.eq("projectId", t._id)).collect()) { c.miembrosProyecto++; ops.push(() => ctx.db.delete(m._id)); }
+      ops.push(() => ctx.db.delete(t._id));
+    }
+    for (const team of teams) {
+      for (const m of await ctx.db.query("teamMembers").withIndex("by_team", (q) => q.eq("teamId", team._id)).collect()) { c.miembrosEquipo++; ops.push(() => ctx.db.delete(m._id)); }
+      ops.push(() => ctx.db.delete(team._id));
+    }
+    for (const t of listRefsFuera) ops.push(() => ctx.db.patch(t._id, { listId: undefined }));
+    for (const l of lists) ops.push(() => ctx.db.delete(l._id));
+    for (const t of tags) ops.push(() => ctx.db.delete(t._id));
+    for (const m of members) ops.push(() => ctx.db.delete(m._id));
+    ops.push(() => ctx.db.delete(ws._id));
+
+    // Quién se queda sin ningún entorno después de esto.
+    const profiles = await ctx.db.query("profiles").collect();
+    const sinEntorno: string[] = [];
+    for (const m of members) {
+      const otros = (await ctx.db.query("workspaceMembers").withIndex("by_user", (q) => q.eq("userId", m.userId)).collect())
+        .filter((x) => x.workspaceId !== ws._id);
+      if (!otros.length) sinEntorno.push(profiles.find((p) => p.userId === m.userId)?.username ?? m.userId);
+    }
+
+    const resumen = {
+      entorno: ws.name,
+      dryRun,
+      ...c,
+      equipos: teams.map((t) => t.name),
+      listas: lists.map((l) => l.name),
+      etiquetas: tags.length,
+      miembrosEntorno: members.length,
+      listasDesenganchadasEnOtrosEntornos: listRefsFuera.length,
+      usuariosQueSeQuedanSinEntorno: sinEntorno,
+      descendientesDeOtroEntornoIncluidos: ajenas.map((t) => t.title),
+      operaciones: ops.length,
+    };
+    if (!dryRun) for (const op of ops) await op();
+    return resumen;
+  },
+});
+
+// Rellena el workspaceId que les faltaba a las tareas de equipo (y a sus
+// subtareas), heredándolo del equipo o del padre. Por defecto simula.
+export const backfillTaskWorkspaces = mutation({
+  args: { dryRun: v.optional(v.boolean()) },
+  handler: async (ctx, { dryRun = true }) => {
+    const teams = new Map((await ctx.db.query("teams").collect()).map((t) => [t._id, t]));
+    const tasks = await ctx.db.query("tasks").collect();
+    const ws = new Map(tasks.map((t) => [t._id, t.workspaceId]));
+    const fixes = new Map<string, string>();
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const t of tasks) {
+        if (ws.get(t._id)) continue;
+        const fromTeam = t.teamId ? teams.get(t.teamId)?.workspaceId : undefined;
+        const fromParent = t.parentTaskId ? ws.get(t.parentTaskId) : undefined;
+        const w = fromParent ?? fromTeam;
+        if (w) { ws.set(t._id, w); fixes.set(t._id, w); changed = true; }
+      }
+    }
+    const wsNames = new Map((await ctx.db.query("workspaces").collect()).map((w) => [w._id as string, w.name]));
+    const porEntorno: Record<string, number> = {};
+    for (const w of fixes.values()) porEntorno[wsNames.get(w) ?? w] = (porEntorno[wsNames.get(w) ?? w] ?? 0) + 1;
+    const siguenSinEntorno = tasks.filter((t) => !ws.get(t._id)).length;
+    if (!dryRun) for (const [id, w] of fixes) await ctx.db.patch(id as Id<"tasks">, { workspaceId: w as Id<"workspaces"> });
+    return { dryRun, arregladas: fixes.size, porEntorno, siguenSinEntorno };
+  },
+});
+
+// Borra la CUENTA de un usuario (username exacto) con todo su rastro de
+// sesión. Se niega si aún pertenece a algún entorno o si quedan datos de la
+// app que dependan de él (tareas, equipos, listas, notas…): primero hay que
+// limpiar eso de forma consciente. Por defecto simula. CLI-only.
+export const deleteUserAccount = mutation({
+  args: { username: v.string(), dryRun: v.optional(v.boolean()) },
+  handler: async (ctx, { username, dryRun = true }) => {
+    const profile = await ctx.db.query("profiles").withIndex("by_username", (q) => q.eq("username", username)).unique();
+    if (!profile) throw new Error(`Username "${username}" no encontrado (exacto). Abortado.`);
+    const userId = profile.userId;
+    const user = await ctx.db.get(userId);
+
+    const restos = {
+      entornos: (await ctx.db.query("workspaceMembers").withIndex("by_user", (q) => q.eq("userId", userId)).collect()).length,
+      equipos: (await ctx.db.query("teamMembers").withIndex("by_user", (q) => q.eq("userId", userId)).collect()).length,
+      tareasCreadas: (await ctx.db.query("tasks").withIndex("by_creator", (q) => q.eq("creatorId", userId)).collect()).length,
+      tareasAsignadas: (await ctx.db.query("tasks").withIndex("by_assignee", (q) => q.eq("assigneeId", userId)).collect()).length,
+      proyectos: (await ctx.db.query("projectMembers").withIndex("by_user", (q) => q.eq("userId", userId)).collect()).length,
+      listas: (await ctx.db.query("lists").withIndex("by_owner", (q) => q.eq("ownerId", userId)).collect()).length,
+      notasCerebro: (await ctx.db.query("brainNotes").withIndex("by_owner", (q) => q.eq("ownerId", userId)).collect()).length,
+      equiposQueEsDueno: (await ctx.db.query("teams").withIndex("by_owner", (q) => q.eq("ownerId", userId)).collect()).length,
+      entornosQueEsDueno: (await ctx.db.query("workspaces").withIndex("by_owner", (q) => q.eq("ownerId", userId)).collect()).length,
+    };
+    const bloqueos = Object.entries(restos).filter(([, n]) => n > 0);
+    if (bloqueos.length) {
+      throw new Error(`"${username}" aún tiene datos: ${JSON.stringify(Object.fromEntries(bloqueos))}. Abortado.`);
+    }
+
+    const tags = await ctx.db.query("userTags").withIndex("by_user", (q) => q.eq("userId", userId)).collect();
+    const myDay = (await ctx.db.query("myDay").collect()).filter((m) => m.userId === userId);
+    const accounts = await ctx.db.query("authAccounts").withIndex("userIdAndProvider", (q) => q.eq("userId", userId)).collect();
+    const sessions = await ctx.db.query("authSessions").withIndex("userId", (q) => q.eq("userId", userId)).collect();
+    const tokens = [];
+    for (const s of sessions) {
+      tokens.push(...(await ctx.db.query("authRefreshTokens").withIndex("sessionId", (q) => q.eq("sessionId", s._id)).collect()));
+    }
+    const resumen = {
+      username, email: user?.email, dryRun,
+      etiquetas: tags.length, miDia: myDay.length, cuentasAuth: accounts.length,
+      sesiones: sessions.length, refreshTokens: tokens.length,
+    };
+    if (!dryRun) {
+      for (const d of [...tags, ...myDay, ...tokens, ...sessions, ...accounts]) await ctx.db.delete(d._id);
+      await ctx.db.delete(profile._id);
+      if (user) await ctx.db.delete(userId);
+    }
+    return resumen;
   },
 });
