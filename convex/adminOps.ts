@@ -776,3 +776,67 @@ export const deleteUserAccount = mutation({
     return resumen;
   },
 });
+
+// "Archiva" a un usuario: no podrá volver a entrar ni aparece como miembro
+// de nada, pero se conserva su ficha (users + profiles) para que sus tareas
+// sigan mostrando quién las hizo. Username exacto, simula por defecto.
+export const archiveUser = mutation({
+  args: { username: v.string(), dryRun: v.optional(v.boolean()) },
+  handler: async (ctx, { username, dryRun = true }) => {
+    const profile = await ctx.db.query("profiles").withIndex("by_username", (q) => q.eq("username", username)).unique();
+    if (!profile) throw new Error(`Username "${username}" no encontrado (exacto). Abortado.`);
+    const userId = profile.userId;
+    const dueno = {
+      entornos: (await ctx.db.query("workspaces").withIndex("by_owner", (q) => q.eq("ownerId", userId)).collect()).map((x) => x.name),
+      equipos: (await ctx.db.query("teams").withIndex("by_owner", (q) => q.eq("ownerId", userId)).collect()).map((x) => x.name),
+    };
+    if (dueno.entornos.length || dueno.equipos.length) {
+      throw new Error(`"${username}" es dueño de ${JSON.stringify(dueno)}: reasígnalo antes. Abortado.`);
+    }
+    const accounts = await ctx.db.query("authAccounts").withIndex("userIdAndProvider", (q) => q.eq("userId", userId)).collect();
+    const sessions = await ctx.db.query("authSessions").withIndex("userId", (q) => q.eq("userId", userId)).collect();
+    const tokens = [];
+    for (const s of sessions) tokens.push(...(await ctx.db.query("authRefreshTokens").withIndex("sessionId", (q) => q.eq("sessionId", s._id)).collect()));
+    const wsm = await ctx.db.query("workspaceMembers").withIndex("by_user", (q) => q.eq("userId", userId)).collect();
+    const tm = await ctx.db.query("teamMembers").withIndex("by_user", (q) => q.eq("userId", userId)).collect();
+    const pm = await ctx.db.query("projectMembers").withIndex("by_user", (q) => q.eq("userId", userId)).collect();
+    const myDay = (await ctx.db.query("myDay").collect()).filter((m) => m.userId === userId);
+    const tags = await ctx.db.query("userTags").withIndex("by_user", (q) => q.eq("userId", userId)).collect();
+    const tareas = await ctx.db.query("tasks").withIndex("by_creator", (q) => q.eq("creatorId", userId)).collect();
+    const resumen = {
+      username, dryRun,
+      seBorra: { cuentasAuth: accounts.length, sesiones: sessions.length, refreshTokens: tokens.length, entornos: wsm.length, equipos: tm.length, proyectos: pm.length, miDia: myDay.length, etiquetas: tags.length },
+      seConserva: { ficha: true, tareasCreadas: tareas.length, pendientes: tareas.filter((t) => !t.completed).length },
+    };
+    if (!dryRun) for (const d of [...tokens, ...sessions, ...accounts, ...wsm, ...tm, ...pm, ...myDay, ...tags]) await ctx.db.delete(d._id);
+    return resumen;
+  },
+});
+
+// Borra tareas concretas por título EXACTO de un creador concreto. Cada
+// título debe coincidir con una sola tarea y no tener subtareas. Simula
+// por defecto. CLI-only.
+export const deleteTasksByExactTitle = mutation({
+  args: { username: v.string(), titles: v.array(v.string()), dryRun: v.optional(v.boolean()) },
+  handler: async (ctx, { username, titles, dryRun = true }) => {
+    const profile = await ctx.db.query("profiles").withIndex("by_username", (q) => q.eq("username", username)).unique();
+    if (!profile) throw new Error(`Username "${username}" no encontrado. Abortado.`);
+    const mine = await ctx.db.query("tasks").withIndex("by_creator", (q) => q.eq("creatorId", profile.userId)).collect();
+    const found = [];
+    for (const title of titles) {
+      const m = mine.filter((t) => t.title === title);
+      if (m.length !== 1) throw new Error(`"${title}": ${m.length} coincidencias. Abortado sin tocar nada.`);
+      const kids = await ctx.db.query("tasks").withIndex("by_parent", (q) => q.eq("parentTaskId", m[0]._id)).collect();
+      if (kids.length) throw new Error(`"${title}" tiene subtareas. Abortado.`);
+      found.push(m[0]);
+    }
+    if (!dryRun) {
+      for (const t of found) {
+        for (const m of await ctx.db.query("myDay").withIndex("by_task", (q) => q.eq("taskId", t._id)).collect()) await ctx.db.delete(m._id);
+        for (const a of await ctx.db.query("attachments").withIndex("by_task", (q) => q.eq("taskId", t._id)).collect()) { await ctx.storage.delete(a.storageId); await ctx.db.delete(a._id); }
+        await ctx.db.delete(t._id);
+      }
+    }
+    return { dryRun, borradas: found.map((t) => t.title) };
+  },
+});
